@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voluntários Cadastrados — Sistema de Gestão de Voluntários</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <div class="sidebar-overlay" data-nav-overlay></div>
+    <aside class="sidebar">
+      <div class="sidebar__brand">
+        <span class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        </span>
+        <div>
+          <strong>Gestão de Voluntários</strong>
+          <span>Painel administrativo</span>
+        </div>
+      </div>
+      <nav class="sidebar__nav">
+        <a class="sidebar__link" href="index.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></span>
+          Início
+        </a>
+        <a class="sidebar__link" href="voluntarios.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></span>
+          Voluntários Cadastrados
+        </a>
+        <a class="sidebar__link" href="cadastro.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></span>
+          Adicionar Voluntário
+        </a>
+      </nav>
+    </aside>
+
+    <div class="main-area">
+      <header class="topbar">
+        <button class="topbar__toggle" data-nav-toggle aria-label="Abrir menu">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></span>
+        </button>
+        <span class="topbar__titulo">Voluntários Cadastrados</span>
+      </header>
+
+      <main class="page-content">
+        <a href="index.html" class="link-back">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg></span>
+          Voltar ao Painel
+        </a>
+
+        <div class="page-header">
+          <div>
+            <h1>Voluntários Cadastrados</h1>
+            <p class="page-header__subtitulo">Consulte, edite ou remova os registros de voluntariado</p>
+          </div>
+          <div class="page-header__acoes">
+            <a class="btn" href="cadastro.html">
+              <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></span>
+              Adicionar Voluntário
+            </a>
+          </div>
+        </div>
+
+        <section class="filtros-barra">
+          <div class="busca-campo">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></span>
+            <input type="search" id="filtro-busca" placeholder="Pesquisar por nome, CPF, local ou cargo...">
+          </div>
+          <div class="filtro-grupo">
+            <label for="filtro-status">Status do contrato</label>
+            <select id="filtro-status">
+              <option value="">Todos</option>
+              <option value="ATIVO">Ativo</option>
+              <option value="A_INICIAR">A Iniciar</option>
+              <option value="ENCERRADO">Encerrado</option>
+            </select>
+          </div>
+          <div class="filtro-grupo">
+            <label for="filtro-secretaria">Secretaria</label>
+            <select id="filtro-secretaria">
+              <option value="">Todas</option>
+            </select>
+          </div>
+          <div class="filtro-grupo">
+            <label for="filtro-carga">Carga horária</label>
+            <select id="filtro-carga">
+              <option value="">Todas</option>
+              <option value="40">40 horas</option>
+              <option value="30">30 horas</option>
+              <option value="20">20 horas</option>
+            </select>
+          </div>
+        </section>
+
+        <div class="tabela-wrapper">
+          <table class="tabela-voluntarios">
+            <thead>
+              <tr>
+                <th>Voluntário</th>
+                <th>Local de Prestação</th>
+                <th>Término do Contrato</th>
+                <th>Dias para o Término</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tabela-corpo"></tbody>
+          </table>
+        </div>
+
+        <div class="lista-cards" id="lista-cards"></div>
+
+        <div class="estado-vazio" id="estado-vazio" style="display:none;">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span>
+          <p id="estado-vazio-texto">Nenhum voluntário cadastrado ainda.</p>
+          <a class="btn" href="cadastro.html">Adicionar o primeiro voluntário</a>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script src="js/voluntarios.js"></script>
+</body>
+</html>

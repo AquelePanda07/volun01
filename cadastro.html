@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="titulo-pagina">Adicionar Voluntário — Sistema de Gestão de Voluntários</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <div class="sidebar-overlay" data-nav-overlay></div>
+    <aside class="sidebar">
+      <div class="sidebar__brand">
+        <span class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        </span>
+        <div>
+          <strong>Gestão de Voluntários</strong>
+          <span>Painel administrativo</span>
+        </div>
+      </div>
+      <nav class="sidebar__nav">
+        <a class="sidebar__link" href="index.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></span>
+          Início
+        </a>
+        <a class="sidebar__link" href="voluntarios.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></span>
+          Voluntários Cadastrados
+        </a>
+        <a class="sidebar__link" href="cadastro.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></span>
+          Adicionar Voluntário
+        </a>
+      </nav>
+    </aside>
+
+    <div class="main-area">
+      <header class="topbar">
+        <button class="topbar__toggle" data-nav-toggle aria-label="Abrir menu">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></span>
+        </button>
+        <span class="topbar__titulo" id="topo-titulo">Adicionar Voluntário</span>
+      </header>
+
+      <main class="page-content">
+        <a href="voluntarios.html" class="link-back">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg></span>
+          Voltar à Lista de Voluntários
+        </a>
+
+        <div class="page-header">
+          <div>
+            <h1 id="form-titulo">Adicionar Voluntário</h1>
+            <p class="page-header__subtitulo">Preencha todos os campos obrigatórios para concluir o cadastro</p>
+          </div>
+        </div>
+
+        <form id="form-voluntario" novalidate>
+          <!-- Dados Pessoais -->
+          <section class="form-secao">
+            <h2 class="form-secao__titulo">
+              <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span>
+              Dados Pessoais
+            </h2>
+
+            <div class="campo campo--full">
+              <label>Foto <span class="obrigatorio">*</span></label>
+              <div class="upload-foto">
+                <div class="upload-foto__preview" id="preview-foto">
+                  <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg></span>
+                </div>
+                <div>
+                  <input type="file" id="input-foto" accept="image/*">
+                  <div class="campo-erro" id="erro-foto">Selecione uma foto para o voluntário.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <div class="campo campo--span-2">
+                <label for="nome">Nome completo <span class="obrigatorio">*</span></label>
+                <input type="text" id="nome" placeholder="Ex.: Maria da Silva">
+                <div class="campo-erro" id="erro-nome">Informe o nome completo.</div>
+              </div>
+
+              <div class="campo">
+                <label for="cpf">CPF <span class="obrigatorio">*</span></label>
+                <input type="text" id="cpf" placeholder="000.000.000-00" maxlength="14" inputmode="numeric">
+                <div class="campo-erro" id="erro-cpf">Informe um CPF válido.</div>
+              </div>
+
+              <div class="campo">
+                <label for="rg">RG <span class="obrigatorio">*</span></label>
+                <input type="text" id="rg" placeholder="Ex.: 1234567">
+                <div class="campo-erro" id="erro-rg">Informe o RG.</div>
+              </div>
+
+              <div class="campo">
+                <label for="rgOrgaoExpedidor">Órgão expedidor do RG <span class="obrigatorio">*</span></label>
+                <input type="text" id="rgOrgaoExpedidor" placeholder="Ex.: SSP/RO">
+                <div class="campo-erro" id="erro-rgOrgaoExpedidor">Informe o órgão expedidor.</div>
+              </div>
+
+              <div class="campo">
+                <label for="rgDataExpedicao">Data de expedição do RG <span class="obrigatorio">*</span></label>
+                <input type="date" id="rgDataExpedicao">
+                <div class="campo-erro" id="erro-rgDataExpedicao">Informe a data de expedição do RG.</div>
+              </div>
+
+              <div class="campo">
+                <label for="dataNascimento">Data de nascimento <span class="obrigatorio">*</span></label>
+                <input type="date" id="dataNascimento">
+                <div class="campo-erro" id="erro-dataNascimento">Informe a data de nascimento.</div>
+              </div>
+
+              <div class="campo">
+                <label for="idade">Idade</label>
+                <input type="text" id="idade" placeholder="Calculado automaticamente" readonly>
+              </div>
+
+              <div class="campo">
+                <label for="sexo">Sexo <span class="obrigatorio">*</span></label>
+                <select id="sexo">
+                  <option value="">Selecione...</option>
+                  <option value="masculino">Masculino</option>
+                  <option value="feminino">Feminino</option>
+                  <option value="outro">Outro</option>
+                  <option value="nao_informar">Prefiro não informar</option>
+                </select>
+                <div class="campo-erro" id="erro-sexo">Selecione uma opção.</div>
+              </div>
+
+              <div class="campo">
+                <label for="escolaridade">Grau de escolaridade <span class="obrigatorio">*</span></label>
+                <select id="escolaridade">
+                  <option value="">Selecione...</option>
+                  <option>Ensino Fundamental Incompleto</option>
+                  <option>Ensino Fundamental Completo</option>
+                  <option>Ensino Médio Incompleto</option>
+                  <option>Ensino Médio Completo</option>
+                  <option>Ensino Superior Incompleto</option>
+                  <option>Ensino Superior Completo</option>
+                  <option>Pós-graduação</option>
+                  <option>Mestrado</option>
+                  <option>Doutorado</option>
+                </select>
+                <div class="campo-erro" id="erro-escolaridade">Selecione uma opção.</div>
+              </div>
+
+              <div class="campo">
+                <label for="estadoCivil">Estado civil <span class="obrigatorio">*</span></label>
+                <select id="estadoCivil">
+                  <option value="">Selecione...</option>
+                  <option value="solteiro">Solteiro(a)</option>
+                  <option value="casado">Casado(a)</option>
+                  <option value="divorciado">Divorciado(a)</option>
+                  <option value="viuvo">Viúvo(a)</option>
+                  <option value="uniao_estavel">União estável</option>
+                </select>
+                <div class="campo-erro" id="erro-estadoCivil">Selecione uma opção.</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Dados da Prestação de Serviço -->
+          <section class="form-secao">
+            <h2 class="form-secao__titulo">
+              <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg></span>
+              Dados da Prestação de Serviço
+            </h2>
+
+            <div class="form-grid">
+              <div class="campo">
+                <label for="cargaHoraria">Carga horária <span class="obrigatorio">*</span></label>
+                <select id="cargaHoraria">
+                  <option value="">Selecione...</option>
+                  <option value="40">40 horas</option>
+                  <option value="30">30 horas</option>
+                  <option value="20">20 horas</option>
+                </select>
+                <div class="campo-erro" id="erro-cargaHoraria">Selecione a carga horária.</div>
+              </div>
+
+              <div class="campo campo--span-2">
+                <label for="cargo">Cargo / Função <span class="obrigatorio">*</span></label>
+                <select id="cargo">
+                  <option value="">Selecione...</option>
+                  <option value="Auxílio na Limpeza do Espaço Escolar/Zelador">Auxílio na Limpeza do Espaço Escolar/Zelador</option>
+                  <option value="Profissional de Apoio Escolar PAE (cuidador)">Profissional de Apoio Escolar PAE (cuidador)</option>
+                </select>
+                <div class="campo-erro" id="erro-cargo">Informe o cargo/função.</div>
+              </div>
+
+              <div class="campo">
+                <label for="cep">CEP <span class="obrigatorio">*</span></label>
+                <input type="text" id="cep" placeholder="00000-000" maxlength="9" inputmode="numeric">
+                <div class="campo-erro" id="erro-cep">Informe um CEP válido.</div>
+              </div>
+
+              <div class="campo campo--span-2">
+                <label for="logradouro">Logradouro <span class="obrigatorio">*</span></label>
+                <input type="text" id="logradouro" placeholder="Rua, avenida...">
+                <div class="campo-erro" id="erro-logradouro">Informe o logradouro.</div>
+              </div>
+
+              <div class="campo">
+                <label for="numero">Número <span class="obrigatorio">*</span></label>
+                <input type="text" id="numero" placeholder="Ex.: 123">
+                <div class="campo-erro" id="erro-numero">Informe o número.</div>
+              </div>
+
+              <div class="campo">
+                <label for="complemento">Complemento</label>
+                <input type="text" id="complemento" placeholder="Apto, bloco... (opcional)">
+              </div>
+
+              <div class="campo">
+                <label for="bairro">Bairro <span class="obrigatorio">*</span></label>
+                <input type="text" id="bairro" placeholder="Ex.: Centro">
+                <div class="campo-erro" id="erro-bairro">Informe o bairro.</div>
+              </div>
+
+              <div class="campo">
+                <label for="cidade">Cidade <span class="obrigatorio">*</span></label>
+                <input type="text" id="cidade" placeholder="Ex.: São Paulo">
+                <div class="campo-erro" id="erro-cidade">Informe a cidade.</div>
+              </div>
+
+              <div class="campo">
+                <label for="estado">Estado <span class="obrigatorio">*</span></label>
+                <select id="estado">
+                  <option value="">Selecione...</option>
+                  <option value="AC">Acre</option><option value="AL">Alagoas</option><option value="AP">Amapá</option>
+                  <option value="AM">Amazonas</option><option value="BA">Bahia</option><option value="CE">Ceará</option>
+                  <option value="DF">Distrito Federal</option><option value="ES">Espírito Santo</option><option value="GO">Goiás</option>
+                  <option value="MA">Maranhão</option><option value="MT">Mato Grosso</option><option value="MS">Mato Grosso do Sul</option>
+                  <option value="MG">Minas Gerais</option><option value="PA">Pará</option><option value="PB">Paraíba</option>
+                  <option value="PR">Paraná</option><option value="PE">Pernambuco</option><option value="PI">Piauí</option>
+                  <option value="RJ">Rio de Janeiro</option><option value="RN">Rio Grande do Norte</option><option value="RS">Rio Grande do Sul</option>
+                  <option value="RO">Rondônia</option><option value="RR">Roraima</option><option value="SC">Santa Catarina</option>
+                  <option value="SP">São Paulo</option><option value="SE">Sergipe</option><option value="TO">Tocantins</option>
+                </select>
+                <div class="campo-erro" id="erro-estado">Selecione o estado.</div>
+              </div>
+
+              <div class="campo campo--full">
+                <label for="localPrestacao">Local de prestação de serviço <span class="obrigatorio">*</span></label>
+                <input type="text" id="localPrestacao" placeholder="Ex: Escola Municipal XYZ, Secretaria Municipal de Educação...">
+                <div class="campo-erro" id="erro-localPrestacao">Informe o local de prestação de serviço.</div>
+              </div>
+
+              <div class="campo">
+                <label for="dataInicio">Data de início <span class="obrigatorio">*</span></label>
+                <input type="date" id="dataInicio">
+                <div class="campo-erro" id="erro-dataInicio">Informe a data de início.</div>
+              </div>
+
+              <div class="campo" style="align-self:end;">
+                <button type="button" class="btn btn--outline" id="preencherPeriodo">Hoje + 6 meses</button>
+              </div>
+
+              <div class="campo">
+                <label for="dataTermino">Data de término <span class="obrigatorio">*</span></label>
+                <input type="date" id="dataTermino">
+                <div class="campo-erro" id="erro-dataTermino">A data de término deve ser posterior à data de início.</div>
+              </div>
+
+              <div class="campo">
+                <label for="horarioInicio">Horário de início <span class="obrigatorio">*</span></label>
+                <input type="time" id="horarioInicio">
+                <div class="campo-erro" id="erro-horarioInicio">Informe o horário de início.</div>
+              </div>
+
+              <div class="campo">
+                <label for="horarioTermino">Horário de término <span class="obrigatorio">*</span></label>
+                <input type="time" id="horarioTermino">
+                <div class="campo-erro" id="erro-horarioTermino">O horário de término deve ser posterior ao de início.</div>
+              </div>
+
+              <div class="campo campo--full">
+                <label>Dias da semana em que realizará a prestação de serviço <span class="obrigatorio">*</span></label>
+                <div class="dias-semana-grupo">
+                  <label class="dia-semana-opcao"><input type="checkbox" name="diaSemana" value="SEG"> Seg</label>
+                  <label class="dia-semana-opcao"><input type="checkbox" name="diaSemana" value="TER"> Ter</label>
+                  <label class="dia-semana-opcao"><input type="checkbox" name="diaSemana" value="QUA"> Qua</label>
+                  <label class="dia-semana-opcao"><input type="checkbox" name="diaSemana" value="QUI"> Qui</label>
+                  <label class="dia-semana-opcao"><input type="checkbox" name="diaSemana" value="SEX"> Sex</label>
+                  <label class="dia-semana-opcao"><input type="checkbox" name="diaSemana" value="SAB"> Sáb</label>
+                  <label class="dia-semana-opcao"><input type="checkbox" name="diaSemana" value="DOM"> Dom</label>
+                </div>
+                <div class="campo-erro" id="erro-diasSemana">Selecione ao menos um dia da semana.</div>
+              </div>
+
+              <div class="campo">
+                <label for="secretaria">Secretaria <span class="obrigatorio">*</span></label>
+                <select id="secretaria">
+                  <option value="">Selecione...</option>
+                  <option>Secretaria Municipal de Educação</option>
+                  <option>Secretaria Municipal de Saúde</option>
+                  <option>Secretaria Municipal de Assistência Social</option>
+                  <option value="__outra">Outra (especificar)</option>
+                </select>
+                <input type="text" id="secretariaOutra" placeholder="Informe a secretaria" style="margin-top:.5rem; display:none;">
+                <div class="campo-erro" id="erro-secretaria">Informe a secretaria responsável.</div>
+              </div>
+
+              <div class="campo">
+                <label for="nomeSecretario">Nome do Secretário <span class="obrigatorio">*</span></label>
+                <select id="nomeSecretario">
+                  <option value="">Selecione...</option>
+                  <option value="Luciana Rodrigues Fontinele">Luciana Rodrigues Fontinele</option>
+                  <option value="Rodolpho Marins de Lima Arco">Rodolpho Marins de Lima Arco</option>
+                  <option value="__outra">Outra (especificar)</option>
+                </select>
+                <input type="text" id="nomeSecretarioOutra" placeholder="Informe o nome do secretário" style="margin-top:.5rem; display:none;">
+                <div class="campo-erro" id="erro-nomeSecretario">Informe o nome do secretário.</div>
+              </div>
+            </div>
+          </section>
+
+          <div class="form-acoes">
+            <a href="voluntarios.html" class="btn btn--outline">
+              <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg></span>
+              Cancelar
+            </a>
+            <button type="submit" class="btn">
+              <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg></span>
+              Salvar Voluntário
+            </button>
+          </div>
+        </form>
+      </main>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script src="js/cadastro.js"></script>
+  <script>
+    document.getElementById('preencherPeriodo').addEventListener('click', function () {
+      const hoje = new Date();
+      const termino = new Date(hoje);
+      termino.setMonth(termino.getMonth() + 6);
+      const formato = data => {
+        const ano = data.getFullYear();
+        const mes = String(data.getMonth() + 1).padStart(2, '0');
+        const dia = String(data.getDate()).padStart(2, '0');
+        return `${ano}-${mes}-${dia}`;
+      };
+      document.getElementById('dataInicio').value = formato(hoje);
+      document.getElementById('dataTermino').value = formato(termino);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+/vendor/
+/storage/fotos/*
+!/storage/fotos/.gitkeep
+/storage/documentos/*
+!/storage/documentos/.gitkeep
+composer.phar
+*.log
