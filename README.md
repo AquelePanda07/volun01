@@ -188,10 +188,12 @@ Account.
   (ex.: `joao_da_silva_6abd4d8d75ec2.jpg`); a planilha guarda só esse caminho.
 - **Cargos/Secretarias/Locais/Secretarios**: usados para popular os campos de
   seleção do formulário de cadastro (com endpoints próprios em `api/`). As
-  listas `Cargos`, `Secretarias` e `Secretarios` são semeadas automaticamente
-  com valores padrão na primeira execução, caso estejam vazias; `Locais` fica
-  vazia até a Prefeitura cadastrar os locais pela própria interface (via
-  opção "Outro (especificar)" no formulário).
+  listas `Cargos`, `Secretarias`, `Secretarios` e `Locais` são semeadas
+  automaticamente com valores padrão na primeira execução, caso estejam
+  vazias (`Locais`: EMEI Pequeno Príncipe, EMEF Dr. Custódio, Creche
+  Pequeninos de Cristo, EMEF Sossego da Mamãe e EMEF Cecília Meireles).
+  Outros locais podem ser informados pela opção "Outro (especificar)" do
+  formulário, ou acrescentados direto na aba `Locais` da planilha.
 
 ## 4. Migração futura para MySQL
 

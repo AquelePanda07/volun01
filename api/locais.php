@@ -24,7 +24,14 @@ $id = isset($_GET['id']) ? (int) $_GET['id'] : null;
 
 switch ($metodo) {
     case 'GET':
-        // Sem lista padrão conhecida: cada Prefeitura cadastra os seus próprios locais.
+        // Primeira execução: garante que o combo do formulário não fique vazio.
+        $servico->semearSeVazio([
+            ['nome' => 'EMEI Pequeno Príncipe', 'endereco' => ''],
+            ['nome' => 'EMEF Dr. Custódio', 'endereco' => ''],
+            ['nome' => 'Creche Pequeninos de Cristo', 'endereco' => ''],
+            ['nome' => 'EMEF Sossego da Mamãe', 'endereco' => ''],
+            ['nome' => 'EMEF Cecília Meireles', 'endereco' => ''],
+        ]);
         $dados = !empty($_GET['ativos']) ? $servico->listarAtivos() : $servico->listar();
         responderJson(['sucesso' => true, 'dados' => $dados]);
         break;
