@@ -46,7 +46,7 @@ function formatarDiasSemanaExibicao(diasSemanaCsv) {
 function renderizarVoluntario(v) {
   const status = calcularStatusContrato(v.dataInicio, v.dataTermino);
   const badgeClasse = status === 'ATIVO' ? 'badge--sucesso' : (status === 'ENCERRADO' ? 'badge--perigo' : 'badge--alerta');
-  const foto = v.foto || `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="120" height="120" fill="#c7d3d0"/><text x="50%" y="55%" font-family="Arial" font-size="48" fill="#2f5d50" text-anchor="middle" dominant-baseline="middle">${(v.nome||'?').charAt(0).toUpperCase()}</text></svg>`)}`;
+  const foto = v.foto || `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="120" height="120" fill="#cfe3f8"/><text x="50%" y="55%" font-family="Arial" font-size="48" fill="#1c64b0" text-anchor="middle" dominant-baseline="middle">${(v.nome||'?').charAt(0).toUpperCase()}</text></svg>`)}`;
 
   const sexoLabel = { masculino: 'Masculino', feminino: 'Feminino', outro: 'Outro', nao_informar: 'Prefiro não informar' }[v.sexo] || v.sexo || '-';
   const estadoCivilLabel = { solteiro: 'Solteiro(a)', casado: 'Casado(a)', divorciado: 'Divorciado(a)', viuvo: 'Viúvo(a)', uniao_estavel: 'União estável' }[v.estadoCivil] || v.estadoCivil || '-';

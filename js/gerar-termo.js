@@ -37,7 +37,7 @@ function hojeISO() {
 }
 
 function renderizarResumo(v) {
-  const foto = v.foto || `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="#c7d3d0"/><text x="50%" y="55%" font-family="Arial" font-size="40" fill="#2f5d50" text-anchor="middle" dominant-baseline="middle">${(v.nome||'?').charAt(0).toUpperCase()}</text></svg>`)}`;
+  const foto = v.foto || `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="#cfe3f8"/><text x="50%" y="55%" font-family="Arial" font-size="40" fill="#1c64b0" text-anchor="middle" dominant-baseline="middle">${(v.nome||'?').charAt(0).toUpperCase()}</text></svg>`)}`;
 
   document.getElementById('area-termo').innerHTML = `
     <section class="form-secao">
@@ -129,7 +129,7 @@ function abrirModalPreVisualizacao(html) {
         <h3 style="margin:0;">Pré-visualização do Termo de Adesão</h3>
         <button type="button" class="btn btn--outline btn--sm" data-fechar-preview>Fechar</button>
       </div>
-      <iframe id="iframe-preview-termo" style="flex:1; width:100%; border:1px solid #d8dedc; border-radius:.5rem; background:#fff;"></iframe>
+      <iframe id="iframe-preview-termo" style="flex:1; width:100%; border:1px solid var(--cor-borda); border-radius:.5rem; background:#fff;"></iframe>
     </div>
   `;
   document.body.appendChild(overlay);

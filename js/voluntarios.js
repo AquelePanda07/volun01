@@ -168,5 +168,5 @@ function confirmarExclusao(id) {
 
 function fotoPadraoSvg(nome) {
   const inicial = (nome || '?').trim().charAt(0).toUpperCase();
-  return `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="#c7d3d0"/><text x="50%" y="55%" font-family="Arial" font-size="32" fill="#2f5d50" text-anchor="middle" dominant-baseline="middle">${inicial}</text></svg>`)}`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="#cfe3f8"/><text x="50%" y="55%" font-family="Arial" font-size="32" fill="#1c64b0" text-anchor="middle" dominant-baseline="middle">${inicial}</text></svg>`)}`;
 }
