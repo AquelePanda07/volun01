@@ -17,7 +17,7 @@ require_once __DIR__ . '/../bootstrap.php';
 habilitarCors();
 configurarTratamentoDeErros();
 
-$servico = new ListaSimplesService('Secretarias', ['Nome', 'Sigla']);
+$servico = new ListaSimplesService('secretarias', ['Nome', 'Sigla']);
 $metodo = $_SERVER['REQUEST_METHOD'];
 $id = isset($_GET['id']) ? (int) $_GET['id'] : null;
 

@@ -10,9 +10,8 @@
  * falam com o Google Sheets (banco de dados temporário do sistema).
  *
  * Isso é o que permite que a API e o front-end continuem exatamente
- * iguais depois da migração, e é também o ponto onde uma futura troca
- * por MySQL aconteceria: bastaria um "MySQLVoluntarioService"/
- * "MySQLContratoService" com os mesmos métodos usados aqui.
+ * iguais depois da migração. A troca futura por MySQL acontece uma
+ * camada abaixo, em repositorioDados() (bootstrap.php).
  *
  * Cada voluntário retornado é um objeto "achatado": dados pessoais
  * (aba Voluntarios) + dados do contrato vigente (aba Contratos) juntos
@@ -28,9 +27,8 @@ class VoluntarioRepository
 
     public function __construct()
     {
-        $sheets = new GoogleSheetsService();
-        $this->voluntarios = new VoluntarioService($sheets);
-        $this->contratos = new ContratoService($sheets);
+        $this->voluntarios = new VoluntarioService();
+        $this->contratos = new ContratoService();
     }
 
     /** @return array<int, array<string, mixed>> */

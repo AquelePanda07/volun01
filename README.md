@@ -30,10 +30,21 @@ Interface (HTML/JS)  →  API PHP (api/*.php)  →  Service (services/*.php)  �
   `services/DocumentoService.php`, `services/ListaSimplesService.php`: regras
   de negócio de cada entidade (validação de CPF único, cálculo de status,
   versionamento de documentos, etc.).
+- `services/RepositorioDados.php`: contrato da camada de dados. Os services
+  acima dependem **só** dele (nunca do Google Sheets diretamente). Define
+  as operações genéricas (`listar`, `buscarPorId`, `inserir`, `atualizar`,
+  `excluir`) e os métodos nomeados da especificação (`getVoluntarios()`,
+  `getVoluntarioById()`, `createVoluntario()`, `updateVoluntario()`,
+  `deleteVoluntario()`, `getContratos()`, `createContrato()`,
+  `updateContrato()`, `deleteContrato()`, `getSecretarias()`, `getCargos()`,
+  `getLocais()`…).
 - `services/GoogleSheetsService.php`: **única** classe do sistema que fala
-  diretamente com a Google Sheets API. Sabe ler/inserir/atualizar/excluir
-  linhas por nome de coluna, autenticar com uma Service Account e criar
-  abas/cabeçalhos automaticamente se não existirem.
+  diretamente com a Google Sheets API (implementa `RepositorioDados`).
+  Identifica registros pelo `ID`, autentica com uma Service Account, cria
+  abas/colunas automaticamente se não existirem e mantém as leituras em
+  cache durante cada requisição (para não estourar a cota da API).
+- `repositorioDados()` em `bootstrap.php`: **único** ponto onde se escolhe o
+  armazenamento (hoje, `GoogleSheetsService`).
 
 Nenhuma credencial do Google fica no HTML, CSS ou JavaScript — tudo passa
 pelo PHP, que é o único lugar que lê o arquivo de credenciais.
@@ -50,6 +61,7 @@ config/
   google-sheets.php      Configuração centralizada (ID da planilha, abas, colunas)
   credentials/           Chave da Service Account do Google (NÃO versionada)
 services/
+  RepositorioDados.php     Contrato da camada de dados (base para Google Sheets hoje, MySQL no futuro)
   GoogleSheetsService.php  Comunicação de baixo nível com a Google Sheets API
   VoluntarioService.php    Regras de negócio da aba "Voluntarios"
   ContratoService.php      Regras de negócio da aba "Contratos"
@@ -63,7 +75,7 @@ src/
 templates/               Modelo DOCX (anexo_v_modelo.docx) e modelo HTML do PDF (anexo_v_pdf.php)
 uploads/voluntarios/     Fotos enviadas no cadastro (criado automaticamente)
 documentos/termos/       Termos de Adesão gerados em PDF/DOCX (criado automaticamente)
-logs/                    Reservado para logs do sistema
+logs/                    app.log com os erros ocorridos na API (criado automaticamente)
 sql/schema.sql           Script MySQL (referência para a futura migração — não usado hoje)
 scripts/                 Script utilitário para (re)gerar o modelo DOCX a partir do zero
 js/, css/                Front-end (cadastro, listagem, visualização, geração do termo)
@@ -167,6 +179,13 @@ Account.
   `config/google-sheets.php` não existir na planilha (ou existir vazia), o
   `GoogleSheetsService` a cria e escreve o cabeçalho automaticamente na
   primeira vez que for usada.
+- **Cabeçalhos já existentes são respeitados**: as colunas são localizadas
+  pelo nome (sem diferenciar maiúsculas/acentos, ex.: "Versão" = "Versao"),
+  em qualquer ordem. Colunas que faltarem são **acrescentadas ao final**,
+  nunca sobrescritas, e colunas extras criadas à mão são preservadas nas
+  edições.
+- **Fotos**: salvas como `uploads/voluntarios/<nome_do_voluntario>_<sufixo único>.<ext>`
+  (ex.: `joao_da_silva_6abd4d8d75ec2.jpg`); a planilha guarda só esse caminho.
 - **Cargos/Secretarias/Locais/Secretarios**: usados para popular os campos de
   seleção do formulário de cadastro (com endpoints próprios em `api/`). As
   listas `Cargos`, `Secretarias` e `Secretarios` são semeadas automaticamente
@@ -177,11 +196,19 @@ Account.
 ## 4. Migração futura para MySQL
 
 O sistema foi organizado para que, no futuro, o Google Sheets possa ser
-substituído por MySQL **sem reconstruir a interface**: bastaria criar um
-`MySQLVoluntarioService`, `MySQLContratoService` etc. com os mesmos métodos
-públicos de `services/VoluntarioService.php` e `services/ContratoService.php`,
-e trocar a instanciação em `src/VoluntarioRepository.php`/`src/DocumentoRepository.php`.
-Nenhuma rota (`api/*.php`) nem página do front-end precisaria mudar.
+substituído por MySQL **sem reconstruir a interface**:
+
+1. Criar `services/MySQLService.php` com `class MySQLService extends RepositorioDados`,
+   implementando os 5 métodos abstratos (`listar`, `buscarPorId`, `inserir`,
+   `atualizar`, `excluir`). Cada "entidade" (`voluntarios`, `contratos`,
+   `cargos`…) vira uma tabela, e os registros usam os mesmos nomes de campo
+   do cabeçalho da planilha (ex.: `SELECT nome AS \`Nome\``). Os métodos
+   nomeados (`getVoluntarios()` etc.) já vêm prontos da classe base.
+2. Trocar `new GoogleSheetsService()` por `new MySQLService()` em
+   `repositorioDados()` (`bootstrap.php`).
+
+Nenhum service de domínio, rota (`api/*.php`) ou página do front-end
+precisa mudar.
 
 O arquivo `sql/schema.sql` foi mantido no repositório como referência para
 essa futura migração (ele não é usado pelo sistema atualmente).
@@ -260,6 +287,8 @@ Adicionar Voluntário → Preencher dados → Salvar (Google Sheets)
 - **"Credenciais do Google Sheets não encontradas..."**: siga o passo a passo
   da seção 3 e confirme que o arquivo está em
   `config/credentials/service-account.json`.
+- **Qualquer outro erro da API**: os detalhes (rota, mensagem, arquivo e
+  linha) ficam registrados em `logs/app.log`.
 - **Erro 403 da API do Google**: confirme que a planilha foi compartilhada
   (com permissão de Editor) com o e-mail (`client_email`) que está dentro do
   arquivo JSON da Service Account.

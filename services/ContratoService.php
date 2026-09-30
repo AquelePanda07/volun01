@@ -19,8 +19,6 @@ declare(strict_types=1);
 
 class ContratoService
 {
-    private const ABA = 'Contratos';
-
     /** camelCase (front-end) => cabeçalho da coluna na planilha "Contratos". */
     private const MAPA_COLUNAS = [
         'cargaHoraria' => 'Carga Horaria',
@@ -35,17 +33,17 @@ class ContratoService
         'nomeSecretario' => 'Nome Secretario',
     ];
 
-    private GoogleSheetsService $sheets;
+    private RepositorioDados $dados;
 
-    public function __construct(?GoogleSheetsService $sheets = null)
+    public function __construct(?RepositorioDados $dados = null)
     {
-        $this->sheets = $sheets ?? new GoogleSheetsService();
+        $this->dados = $dados ?? repositorioDados();
     }
 
     /** @return array<int, array<string, mixed>> histórico de contratos do voluntário, mais recente primeiro. */
     public function listarPorVoluntario(int $idVoluntario): array
     {
-        $linhas = array_map([$this, 'paraCamelCase'], $this->sheets->buscarTodosPor(self::ABA, 'ID Voluntario', $idVoluntario));
+        $linhas = array_map([$this, 'paraCamelCase'], $this->dados->getContratos($idVoluntario));
         usort($linhas, fn (array $a, array $b) => $b['id'] <=> $a['id']);
         return $linhas;
     }
@@ -59,22 +57,19 @@ class ContratoService
     /** @return array<int, array<string, mixed>> todos os contratos de todos os voluntários (uso administrativo/relatórios). */
     public function listarTodos(): array
     {
-        $linhas = array_map([$this, 'paraCamelCase'], $this->sheets->lerLinhas(self::ABA));
+        $linhas = array_map([$this, 'paraCamelCase'], $this->dados->getContratos());
         usort($linhas, fn (array $a, array $b) => $b['id'] <=> $a['id']);
         return $linhas;
     }
 
     public function criar(int $idVoluntario, array $dados): array
     {
-        $id = $this->sheets->proximoId(self::ABA);
         $linha = $this->paraColunas($dados);
-        $linha['ID'] = (string) $id;
         $linha['ID Voluntario'] = (string) $idVoluntario;
         $linha['Status'] = self::calcularStatus((string) ($dados['dataInicio'] ?? ''), (string) ($dados['dataTermino'] ?? ''));
         $linha['Data Cadastro'] = date('Y-m-d H:i:s');
 
-        $this->sheets->inserir(self::ABA, $linha);
-        return $this->paraCamelCase($linha);
+        return $this->paraCamelCase($this->dados->createContrato($linha));
     }
 
     /** Atualiza o contrato vigente do voluntário. Nunca cria um novo registro numa edição. */
@@ -94,18 +89,15 @@ class ContratoService
         );
         $linha['Data Cadastro'] = $atual['Data Cadastro'] ?? date('Y-m-d H:i:s');
 
-        $this->sheets->atualizar(self::ABA, (int) $atual['_linha'], $linha);
+        $this->dados->updateContrato((int) $atual['ID'], $linha);
         return $this->paraCamelCase($linha);
     }
 
     /** Remove todos os contratos vinculados a um voluntário (usado ao excluir o voluntário). */
     public function excluirPorVoluntario(int $idVoluntario): void
     {
-        $linhas = $this->sheets->buscarTodosPor(self::ABA, 'ID Voluntario', $idVoluntario);
-        // Exclui de baixo para cima para que os números de linha já lidos não mudem no meio do processo.
-        usort($linhas, fn (array $a, array $b) => $b['_linha'] <=> $a['_linha']);
-        foreach ($linhas as $linha) {
-            $this->sheets->excluir(self::ABA, (int) $linha['_linha']);
+        foreach ($this->dados->getContratos($idVoluntario) as $linha) {
+            $this->dados->deleteContrato((int) $linha['ID']);
         }
     }
 
@@ -126,7 +118,7 @@ class ContratoService
 
     private function buscarLinhaAtual(int $idVoluntario): ?array
     {
-        $linhas = $this->sheets->buscarTodosPor(self::ABA, 'ID Voluntario', $idVoluntario);
+        $linhas = $this->dados->getContratos($idVoluntario);
         if (empty($linhas)) {
             return null;
         }
@@ -159,7 +151,8 @@ class ContratoService
         foreach (self::MAPA_COLUNAS as $camel => $coluna) {
             $resultado[$camel] = $linha[$coluna] ?? '';
         }
-        $resultado['status'] = $linha['Status'] ?? self::calcularStatus((string) $resultado['dataInicio'], (string) $resultado['dataTermino']);
+        // Sempre recalculado: a coluna "Status" da planilha fica desatualizada com o passar dos dias.
+        $resultado['status'] = self::calcularStatus((string) $resultado['dataInicio'], (string) $resultado['dataTermino']);
         $resultado['dataCadastro'] = $linha['Data Cadastro'] ?? '';
         return $resultado;
     }

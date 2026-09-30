@@ -9,20 +9,18 @@ declare(strict_types=1);
 
 class DocumentoService
 {
-    private const ABA = 'Documentos';
+    private RepositorioDados $dados;
 
-    private GoogleSheetsService $sheets;
-
-    public function __construct(?GoogleSheetsService $sheets = null)
+    public function __construct(?RepositorioDados $dados = null)
     {
-        $this->sheets = $sheets ?? new GoogleSheetsService();
+        $this->dados = $dados ?? repositorioDados();
     }
 
     /** Próxima versão para um tipo de documento de um voluntário (1, 2, 3...). */
     public function proximaVersao(int $idVoluntario, string $tipoDocumento): int
     {
         $maior = 0;
-        foreach ($this->sheets->buscarTodosPor(self::ABA, 'ID Voluntario', $idVoluntario) as $linha) {
+        foreach ($this->dados->getDocumentos($idVoluntario) as $linha) {
             if ((string) ($linha['Tipo Documento'] ?? '') === $tipoDocumento) {
                 $maior = max($maior, (int) ($linha['Versao'] ?? 0));
             }
@@ -32,9 +30,7 @@ class DocumentoService
 
     public function registrar(array $dados): array
     {
-        $id = $this->sheets->proximoId(self::ABA);
         $linha = [
-            'ID' => (string) $id,
             'ID Voluntario' => (string) $dados['idVoluntario'],
             'Tipo Documento' => (string) $dados['tipoDocumento'],
             'Nome Arquivo' => (string) $dados['nomeArquivo'],
@@ -44,20 +40,19 @@ class DocumentoService
             'Data Geracao' => date('Y-m-d H:i:s'),
         ];
 
-        $this->sheets->inserir(self::ABA, $linha);
-        return $this->paraCamelCase($linha);
+        return $this->paraCamelCase($this->dados->createDocumento($linha));
     }
 
     public function buscarPorId(int $id): ?array
     {
-        $linha = $this->sheets->buscarPorId(self::ABA, $id);
+        $linha = $this->dados->buscarPorId('documentos', $id);
         return $linha ? $this->paraCamelCase($linha) : null;
     }
 
     /** @return array<int, array<string, mixed>> */
     public function listarPorVoluntario(int $idVoluntario): array
     {
-        $linhas = array_map([$this, 'paraCamelCase'], $this->sheets->buscarTodosPor(self::ABA, 'ID Voluntario', $idVoluntario));
+        $linhas = array_map([$this, 'paraCamelCase'], $this->dados->getDocumentos($idVoluntario));
         usort($linhas, function (array $a, array $b) {
             return strcmp((string) $b['dataGeracao'], (string) $a['dataGeracao']) ?: ($b['id'] <=> $a['id']);
         });

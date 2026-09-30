@@ -14,8 +14,6 @@ declare(strict_types=1);
 
 class VoluntarioService
 {
-    private const ABA = 'Voluntarios';
-
     /** camelCase (front-end) => cabeçalho da coluna na planilha "Voluntarios". */
     private const MAPA_COLUNAS = [
         'nome' => 'Nome',
@@ -36,12 +34,12 @@ class VoluntarioService
         'estado' => 'Estado',
     ];
 
-    private GoogleSheetsService $sheets;
+    private RepositorioDados $dados;
     private string $dirFotos;
 
-    public function __construct(?GoogleSheetsService $sheets = null)
+    public function __construct(?RepositorioDados $dados = null)
     {
-        $this->sheets = $sheets ?? new GoogleSheetsService();
+        $this->dados = $dados ?? repositorioDados();
         $this->dirFotos = __DIR__ . '/../uploads/voluntarios';
         if (!is_dir($this->dirFotos)) {
             mkdir($this->dirFotos, 0775, true);
@@ -51,21 +49,21 @@ class VoluntarioService
     /** @return array<int, array<string, mixed>> */
     public function listar(): array
     {
-        $linhas = array_map([$this, 'paraCamelCase'], $this->sheets->lerLinhas(self::ABA));
+        $linhas = array_map([$this, 'paraCamelCase'], $this->dados->getVoluntarios());
         usort($linhas, fn (array $a, array $b) => strcasecmp((string) ($a['nome'] ?? ''), (string) ($b['nome'] ?? '')));
         return $linhas;
     }
 
     public function buscarPorId(int $id): ?array
     {
-        $linha = $this->sheets->buscarPorId(self::ABA, $id);
+        $linha = $this->dados->getVoluntarioById($id);
         return $linha ? $this->paraCamelCase($linha) : null;
     }
 
     public function existeCpf(string $cpf, ?int $idIgnorar = null): bool
     {
         $cpfNormalizado = preg_replace('/\D/', '', $cpf);
-        foreach ($this->sheets->lerLinhas(self::ABA) as $linha) {
+        foreach ($this->dados->getVoluntarios() as $linha) {
             if ($idIgnorar !== null && (int) ($linha['ID'] ?? 0) === $idIgnorar) {
                 continue;
             }
@@ -78,28 +76,25 @@ class VoluntarioService
 
     public function criar(array $dados): array
     {
-        $id = $this->sheets->proximoId(self::ABA);
-        $foto = $this->salvarFotoSeNecessario($id, $dados['foto'] ?? null);
+        $foto = $this->salvarFotoSeNecessario((string) ($dados['nome'] ?? ''), $dados['foto'] ?? null);
 
         $linha = $this->paraColunas($dados);
-        $linha['ID'] = (string) $id;
         $linha['Foto'] = $foto ?? '';
         $linha['Idade'] = !empty($dados['dataNascimento']) ? (string) Validator::calcularIdade((string) $dados['dataNascimento']) : '';
         $linha['Data Cadastro'] = date('Y-m-d H:i:s');
 
-        $this->sheets->inserir(self::ABA, $linha);
-        return $this->paraCamelCase($linha);
+        return $this->paraCamelCase($this->dados->createVoluntario($linha));
     }
 
     public function atualizar(int $id, array $dados): array
     {
-        $atual = $this->sheets->buscarPorId(self::ABA, $id);
+        $atual = $this->dados->getVoluntarioById($id);
         if ($atual === null) {
             throw new RuntimeException('Voluntário não encontrado.');
         }
 
         if (!empty($dados['foto']) && str_starts_with((string) $dados['foto'], 'data:')) {
-            $dados['foto'] = $this->salvarFotoSeNecessario($id, $dados['foto']);
+            $dados['foto'] = $this->salvarFotoSeNecessario((string) ($dados['nome'] ?? $atual['Nome'] ?? ''), $dados['foto']);
         } else {
             unset($dados['foto']);
         }
@@ -112,17 +107,17 @@ class VoluntarioService
         $linha['Idade'] = !empty($dataNascimento) ? (string) Validator::calcularIdade((string) $dataNascimento) : ($atual['Idade'] ?? '');
         $linha['Data Cadastro'] = $atual['Data Cadastro'] ?? date('Y-m-d H:i:s');
 
-        $this->sheets->atualizar(self::ABA, (int) $atual['_linha'], $linha);
+        $this->dados->updateVoluntario($id, $linha);
         return $this->paraCamelCase($linha);
     }
 
     public function excluir(int $id): void
     {
-        $atual = $this->sheets->buscarPorId(self::ABA, $id);
+        $atual = $this->dados->getVoluntarioById($id);
         if ($atual === null) {
             return;
         }
-        $this->sheets->excluir(self::ABA, (int) $atual['_linha']);
+        $this->dados->deleteVoluntario($id);
 
         // Remove também a foto local (se houver), para não acumular arquivos órfãos.
         $caminhoFoto = (string) ($atual['Foto'] ?? '');
@@ -136,8 +131,11 @@ class VoluntarioService
 
     // ------------------------------------------------------------------
 
-    /** Decodifica uma imagem base64 (data URL) e salva em uploads/voluntarios/. */
-    private function salvarFotoSeNecessario(int $idVoluntario, ?string $foto): ?string
+    /**
+     * Decodifica uma imagem base64 (data URL) e salva em uploads/voluntarios/,
+     * com nome no formato "joao_da_silva_<sufixo único>.jpg".
+     */
+    private function salvarFotoSeNecessario(string $nomeVoluntario, ?string $foto): ?string
     {
         if (!$foto) {
             return null;
@@ -155,10 +153,21 @@ class VoluntarioService
             throw new InvalidArgumentException('Não foi possível decodificar a foto enviada.');
         }
 
-        $nomeArquivo = 'voluntario_' . $idVoluntario . '_' . uniqid() . '.' . $extensao;
+        $nomeArquivo = $this->slug($nomeVoluntario) . '_' . uniqid() . '.' . $extensao;
         file_put_contents($this->dirFotos . '/' . $nomeArquivo, $binario);
 
         return 'uploads/voluntarios/' . $nomeArquivo;
+    }
+
+    /** "João da Silva" -> "joao_da_silva" (nome de arquivo seguro). */
+    private function slug(string $texto): string
+    {
+        $texto = strtr(mb_strtolower($texto, 'UTF-8'), [
+            'á' => 'a', 'à' => 'a', 'â' => 'a', 'ã' => 'a', 'é' => 'e', 'ê' => 'e',
+            'í' => 'i', 'ó' => 'o', 'ô' => 'o', 'õ' => 'o', 'ú' => 'u', 'ü' => 'u', 'ç' => 'c',
+        ]);
+        $texto = trim((string) preg_replace('/[^a-z0-9]+/', '_', $texto), '_');
+        return $texto !== '' ? substr($texto, 0, 60) : 'voluntario';
     }
 
     /** @return array<string, string> [nomeDaColuna => valor] apenas para as colunas mapeadas presentes em $dados. */

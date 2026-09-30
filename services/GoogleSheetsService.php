@@ -3,11 +3,11 @@
  * services/GoogleSheetsService.php
  *
  * Única classe do sistema que efetivamente conversa com a Google Sheets
- * API (REST v4). Todo o restante da aplicação (VoluntarioService,
- * ContratoService, DocumentoService, ListaSimplesService) só enxerga
- * "linhas" identificadas por um "ID" e colunas identificadas pelo nome
- * do cabeçalho — nunca letras de coluna, índices internos do Google
- * Sheets ou tokens OAuth2.
+ * API (REST v4). Implementa o contrato RepositorioDados: todo o restante
+ * da aplicação (VoluntarioService, ContratoService, DocumentoService,
+ * ListaSimplesService) só enxerga registros identificados por um "ID" e
+ * campos identificados pelo nome do cabeçalho — nunca letras de coluna,
+ * números de linha, índices internos do Google Sheets ou tokens OAuth2.
  *
  * Autenticação: Service Account (fluxo "JWT Bearer" / RFC 7523), sem
  * qualquer interação do usuário e sem nenhuma credencial exposta ao
@@ -18,14 +18,16 @@
  *     Interface -> API PHP -> Service -> GoogleSheetsService -> Google Sheets
  *
  * Se um dia o Google Sheets for substituído por MySQL, basta criar um
- * "MySQLService" com os mesmos métodos públicos desta classe.
+ * "MySQLService" que também estenda RepositorioDados (ver
+ * services/RepositorioDados.php) e trocá-lo em repositorioDados(), no
+ * bootstrap.php.
  */
 
 declare(strict_types=1);
 
 use Firebase\JWT\JWT;
 
-class GoogleSheetsService
+class GoogleSheetsService extends RepositorioDados
 {
     private const TOKEN_URL = 'https://oauth2.googleapis.com/token';
     private const API_BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
@@ -34,6 +36,9 @@ class GoogleSheetsService
     private string $credentialsPath;
     private string $scope;
 
+    /** @var array<string, string> entidade lógica => nome da aba. */
+    private array $abas;
+
     /** @var array<string, string[]> Colunas (cabeçalho) esperadas de cada aba. */
     private array $colunasPorAba;
 
@@ -41,9 +46,20 @@ class GoogleSheetsService
     private static ?string $tokenCache = null;
     private static int $tokenExpiraEm = 0;
 
-    /** Cache do sheetId numérico e da verificação de cabeçalho, por aba. */
-    private static array $sheetIdPorAba = [];
-    private static array $abasVerificadas = [];
+    /**
+     * Estrutura de cada aba já verificada nesta requisição:
+     * ['sheetId' => int, 'indices' => [nomeColuna => índice 0-based], 'total' => nº de colunas].
+     * @var array<string, array<string, mixed>>
+     */
+    private static array $estruturaPorAba = [];
+
+    /**
+     * Linhas lidas de cada aba nesta requisição (evita reler a mesma aba
+     * várias vezes, o que estouraria a cota de leituras da API). É
+     * invalidado a cada escrita na aba.
+     * @var array<string, array<int, array<string, mixed>>>
+     */
+    private static array $linhasPorAba = [];
 
     public function __construct()
     {
@@ -52,6 +68,7 @@ class GoogleSheetsService
         $this->spreadsheetId = (string) $config['spreadsheet_id'];
         $this->credentialsPath = (string) $config['credentials_path'];
         $this->scope = (string) $config['scope'];
+        $this->abas = $config['abas'];
         $this->colunasPorAba = $config['colunas'];
 
         if ($this->spreadsheetId === '') {
@@ -60,21 +77,127 @@ class GoogleSheetsService
     }
 
     // ------------------------------------------------------------------
-    // API pública (usada pelos Services de domínio)
+    // Implementação de RepositorioDados
+    // ------------------------------------------------------------------
+
+    public function listar(string $entidade): array
+    {
+        return array_map([$this, 'semMetadados'], $this->lerLinhas($entidade));
+    }
+
+    public function buscarPorId(string $entidade, int $id): ?array
+    {
+        $linha = $this->localizarLinha($entidade, $id);
+        return $linha ? $this->semMetadados($linha) : null;
+    }
+
+    public function inserir(string $entidade, array $dados): array
+    {
+        $aba = $this->aba($entidade);
+        $estrutura = $this->garantirAba($aba);
+
+        if (empty($dados['ID'])) {
+            $dados['ID'] = (string) $this->proximoId($entidade);
+        }
+
+        $valores = array_fill(0, $estrutura['total'], '');
+        foreach ($estrutura['indices'] as $coluna => $indice) {
+            $valores[$indice] = $this->paraCelula($dados[$coluna] ?? '');
+        }
+
+        $this->chamarApi(
+            'POST',
+            "/{$this->spreadsheetId}/values/" . rawurlencode("'{$aba}'!A1") . ':append',
+            ['values' => [$valores], 'majorDimension' => 'ROWS'],
+            ['valueInputOption' => 'RAW', 'insertDataOption' => 'INSERT_ROWS']
+        );
+        unset(self::$linhasPorAba[$this->chaveCache($aba)]);
+
+        $registro = [];
+        foreach ($estrutura['indices'] as $coluna => $indice) {
+            $registro[$coluna] = $valores[$indice];
+        }
+        return $registro;
+    }
+
+    public function atualizar(string $entidade, int $id, array $dados): void
+    {
+        $aba = $this->aba($entidade);
+        $linha = $this->localizarLinha($entidade, $id);
+        if ($linha === null) {
+            throw new RuntimeException("Registro {$id} não encontrado na aba \"{$aba}\".");
+        }
+        $estrutura = $this->garantirAba($aba);
+
+        // Parte dos valores atuais da linha, para preservar colunas extras
+        // que alguém tenha criado manualmente na planilha.
+        $valores = $linha['_valores'];
+        foreach ($estrutura['indices'] as $coluna => $indice) {
+            if (array_key_exists($coluna, $dados)) {
+                $valores[$indice] = $this->paraCelula($dados[$coluna]);
+            }
+        }
+
+        $numeroLinha = (int) $linha['_linha'];
+        $ultimaColuna = $this->letraColuna($estrutura['total']);
+        $this->chamarApi(
+            'PUT',
+            "/{$this->spreadsheetId}/values/" . rawurlencode("'{$aba}'!A{$numeroLinha}:{$ultimaColuna}{$numeroLinha}"),
+            ['values' => [array_values($valores)], 'majorDimension' => 'ROWS'],
+            ['valueInputOption' => 'RAW']
+        );
+        unset(self::$linhasPorAba[$this->chaveCache($aba)]);
+    }
+
+    public function excluir(string $entidade, int $id): void
+    {
+        $aba = $this->aba($entidade);
+        $linha = $this->localizarLinha($entidade, $id);
+        if ($linha === null) {
+            return;
+        }
+        $estrutura = $this->garantirAba($aba);
+        $numeroLinha = (int) $linha['_linha'];
+
+        $this->chamarApi('POST', "/{$this->spreadsheetId}:batchUpdate", [
+            'requests' => [[
+                'deleteDimension' => [
+                    'range' => [
+                        'sheetId' => $estrutura['sheetId'],
+                        'dimension' => 'ROWS',
+                        'startIndex' => $numeroLinha - 1,
+                        'endIndex' => $numeroLinha,
+                    ],
+                ],
+            ]],
+        ]);
+        // As linhas abaixo sobem uma posição: o cache precisa ser relido.
+        unset(self::$linhasPorAba[$this->chaveCache($aba)]);
+    }
+
+    // ------------------------------------------------------------------
+    // Leitura
     // ------------------------------------------------------------------
 
     /**
      * Lê todas as linhas com dados de uma aba, já convertidas em arrays
      * associativos [nomeDaColuna => valor]. Linhas totalmente vazias são
-     * ignoradas. Cada linha inclui a chave interna "_linha" com o número
-     * real da linha na planilha (necessário para updates/deletes).
+     * ignoradas. Cada linha inclui as chaves internas "_linha" (número
+     * real da linha na planilha) e "_valores" (células brutas), que
+     * nunca saem desta classe.
      *
      * @return array<int, array<string, mixed>>
      */
-    public function lerLinhas(string $aba): array
+    private function lerLinhas(string $entidade): array
     {
-        $colunas = $this->garantirAba($aba);
-        $ultimaColuna = $this->letraColuna(count($colunas));
+        $aba = $this->aba($entidade);
+        $chave = $this->chaveCache($aba);
+        if (isset(self::$linhasPorAba[$chave])) {
+            return self::$linhasPorAba[$chave];
+        }
+
+        $estrutura = $this->garantirAba($aba);
+        $ultimaColuna = $this->letraColuna($estrutura['total']);
 
         $resposta = $this->chamarApi(
             'GET',
@@ -90,19 +213,20 @@ class GoogleSheetsService
             if ($this->linhaVazia($valores)) {
                 continue;
             }
-            $linha = ['_linha' => $numeroLinha];
-            foreach ($colunas as $indice => $nomeColuna) {
-                $linha[$nomeColuna] = $valores[$indice] ?? '';
+            $valores = array_pad($valores, $estrutura['total'], '');
+            $linha = ['_linha' => $numeroLinha, '_valores' => $valores];
+            foreach ($estrutura['indices'] as $coluna => $indice) {
+                $linha[$coluna] = $valores[$indice];
             }
             $linhas[] = $linha;
         }
-        return $linhas;
+
+        return self::$linhasPorAba[$chave] = $linhas;
     }
 
-    /** Busca a primeira linha cuja coluna "ID" seja igual ao valor informado. */
-    public function buscarPorId(string $aba, $id): ?array
+    private function localizarLinha(string $entidade, int $id): ?array
     {
-        foreach ($this->lerLinhas($aba) as $linha) {
+        foreach ($this->lerLinhas($entidade) as $linha) {
             if ((string) ($linha['ID'] ?? '') === (string) $id) {
                 return $linha;
             }
@@ -110,115 +234,85 @@ class GoogleSheetsService
         return null;
     }
 
-    /** Retorna todas as linhas cuja coluna informada seja igual ao valor dado. */
-    public function buscarTodosPor(string $aba, string $coluna, $valor): array
-    {
-        return array_values(array_filter(
-            $this->lerLinhas($aba),
-            fn (array $linha) => (string) ($linha[$coluna] ?? '') === (string) $valor
-        ));
-    }
-
-    /** Calcula o próximo ID disponível (maior ID atual + 1) para uma aba. */
-    public function proximoId(string $aba): int
+    /** Calcula o próximo ID disponível (maior ID atual + 1), já que o Google Sheets não tem auto-incremento. */
+    private function proximoId(string $entidade): int
     {
         $maior = 0;
-        foreach ($this->lerLinhas($aba) as $linha) {
+        foreach ($this->lerLinhas($entidade) as $linha) {
             $maior = max($maior, (int) ($linha['ID'] ?? 0));
         }
         return $maior + 1;
     }
 
-    /**
-     * Insere uma nova linha ao final da aba.
-     *
-     * @param array<string, mixed> $dados [nomeDaColuna => valor]
-     * @return array<string, mixed> a linha gravada, incluindo "_linha"
-     */
-    public function inserir(string $aba, array $dados): array
+    private function semMetadados(array $linha): array
     {
-        $colunas = $this->garantirAba($aba);
-        $valores = $this->ordenarPorColunas($colunas, $dados);
-
-        $resultado = $this->chamarApi(
-            'POST',
-            "/{$this->spreadsheetId}/values/" . rawurlencode("'{$aba}'!A1") . ':append',
-            ['values' => [$valores], 'majorDimension' => 'ROWS'],
-            ['valueInputOption' => 'RAW', 'insertDataOption' => 'INSERT_ROWS']
-        );
-
-        $numeroLinha = $this->extrairNumeroLinha((string) ($resultado['updates']['updatedRange'] ?? ''));
-
-        $linha = ['_linha' => $numeroLinha];
-        foreach ($colunas as $indice => $nome) {
-            $linha[$nome] = $valores[$indice];
-        }
+        unset($linha['_linha'], $linha['_valores']);
         return $linha;
     }
 
+    // ------------------------------------------------------------------
+    // Provisionamento automático (cria a aba/colunas se não existirem)
+    // ------------------------------------------------------------------
+
+    /** Converte a entidade lógica ('voluntarios') no nome da aba configurado ('Voluntarios'). */
+    private function aba(string $entidade): string
+    {
+        $aba = $this->abas[$entidade] ?? null;
+        if ($aba === null || !isset($this->colunasPorAba[$aba])) {
+            throw new InvalidArgumentException("Entidade \"{$entidade}\" não configurada em config/google-sheets.php.");
+        }
+        return $aba;
+    }
+
     /**
-     * Atualiza (sobrescreve) uma linha existente, identificada pelo seu
-     * número real na planilha (use o valor de "_linha" retornado por
-     * lerLinhas()/buscarPorId()/inserir()).
+     * Garante que a aba exista e contenha todas as colunas esperadas.
      *
-     * @param array<string, mixed> $dados [nomeDaColuna => valor]
+     * O cabeçalho que já existir na planilha é respeitado: as colunas são
+     * localizadas pelo nome (ignorando maiúsculas e acentos), em qualquer
+     * ordem, e as que estiverem faltando são ACRESCENTADAS ao final —
+     * nunca sobrescritas, para não desalinhar dados já existentes.
      */
-    public function atualizar(string $aba, int $numeroLinha, array $dados): void
-    {
-        $colunas = $this->garantirAba($aba);
-        $valores = $this->ordenarPorColunas($colunas, $dados);
-        $ultimaColuna = $this->letraColuna(count($colunas));
-
-        $this->chamarApi(
-            'PUT',
-            "/{$this->spreadsheetId}/values/" . rawurlencode("'{$aba}'!A{$numeroLinha}:{$ultimaColuna}{$numeroLinha}"),
-            ['values' => [$valores], 'majorDimension' => 'ROWS'],
-            ['valueInputOption' => 'RAW']
-        );
-    }
-
-    /** Remove definitivamente uma linha da planilha (desloca as linhas abaixo para cima). */
-    public function excluir(string $aba, int $numeroLinha): void
-    {
-        $this->garantirAba($aba);
-        $sheetId = self::$sheetIdPorAba[$this->chaveCache($aba)] ?? $this->localizarOuCriarAba($aba);
-
-        $this->chamarApi('POST', "/{$this->spreadsheetId}:batchUpdate", [
-            'requests' => [[
-                'deleteDimension' => [
-                    'range' => [
-                        'sheetId' => $sheetId,
-                        'dimension' => 'ROWS',
-                        'startIndex' => $numeroLinha - 1,
-                        'endIndex' => $numeroLinha,
-                    ],
-                ],
-            ]],
-        ]);
-    }
-
-    // ------------------------------------------------------------------
-    // Provisionamento automático (cria a aba/cabeçalho se não existirem)
-    // ------------------------------------------------------------------
-
-    /** Garante que a aba exista e tenha o cabeçalho correto; devolve a lista de colunas. */
     private function garantirAba(string $aba): array
     {
-        $colunas = $this->colunasPorAba[$aba] ?? null;
-        if ($colunas === null) {
-            throw new InvalidArgumentException("Aba \"{$aba}\" não configurada em config/google-sheets.php.");
-        }
-
         $chave = $this->chaveCache($aba);
-        if (isset(self::$abasVerificadas[$chave])) {
-            return $colunas;
+        if (isset(self::$estruturaPorAba[$chave])) {
+            return self::$estruturaPorAba[$chave];
         }
 
-        self::$sheetIdPorAba[$chave] = $this->localizarOuCriarAba($aba);
-        $this->garantirCabecalho($aba, $colunas);
-        self::$abasVerificadas[$chave] = true;
+        $sheetId = $this->localizarOuCriarAba($aba);
 
-        return $colunas;
+        $resposta = $this->chamarApi('GET', "/{$this->spreadsheetId}/values/" . rawurlencode("'{$aba}'!1:1"), null, [
+            'valueRenderOption' => 'UNFORMATTED_VALUE',
+        ]);
+        $cabecalho = array_map('strval', $resposta['values'][0] ?? []);
+        $normalizados = array_map([$this, 'normalizarNomeColuna'], $cabecalho);
+
+        $indices = [];
+        $faltando = [];
+        foreach ($this->colunasPorAba[$aba] as $coluna) {
+            $indice = array_search($this->normalizarNomeColuna($coluna), $normalizados, true);
+            if ($indice === false) {
+                $faltando[] = $coluna;
+            } else {
+                $indices[$coluna] = $indice;
+            }
+        }
+
+        if (!empty($faltando)) {
+            foreach ($faltando as $coluna) {
+                $indices[$coluna] = count($cabecalho);
+                $cabecalho[] = $coluna;
+            }
+            $this->chamarApi('PUT', "/{$this->spreadsheetId}/values/" . rawurlencode("'{$aba}'!A1"), [
+                'values' => [$cabecalho], 'majorDimension' => 'ROWS',
+            ], ['valueInputOption' => 'RAW']);
+        }
+
+        return self::$estruturaPorAba[$chave] = [
+            'sheetId' => $sheetId,
+            'indices' => $indices,
+            'total' => count($cabecalho),
+        ];
     }
 
     private function localizarOuCriarAba(string $aba): int
@@ -239,23 +333,18 @@ class GoogleSheetsService
         return (int) $resultado['replies'][0]['addSheet']['properties']['sheetId'];
     }
 
-    private function garantirCabecalho(string $aba, array $colunas): void
+    /** "Órgão  Expedidor " -> "orgao expedidor" (para aceitar cabeçalhos digitados à mão). */
+    private function normalizarNomeColuna(string $nome): string
     {
-        $ultimaColuna = $this->letraColuna(count($colunas));
-        $intervalo = "'{$aba}'!A1:{$ultimaColuna}1";
-
-        $atual = $this->chamarApi('GET', "/{$this->spreadsheetId}/values/" . rawurlencode($intervalo), null, [
-            'valueRenderOption' => 'UNFORMATTED_VALUE',
+        $semAcento = strtr(mb_strtolower(trim($nome), 'UTF-8'), [
+            'á' => 'a', 'à' => 'a', 'â' => 'a', 'ã' => 'a', 'ä' => 'a',
+            'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
+            'í' => 'i', 'ì' => 'i', 'î' => 'i', 'ï' => 'i',
+            'ó' => 'o', 'ò' => 'o', 'ô' => 'o', 'õ' => 'o', 'ö' => 'o',
+            'ú' => 'u', 'ù' => 'u', 'û' => 'u', 'ü' => 'u',
+            'ç' => 'c',
         ]);
-        $cabecalhoAtual = $atual['values'][0] ?? [];
-
-        if ($cabecalhoAtual === $colunas) {
-            return;
-        }
-
-        $this->chamarApi('PUT', "/{$this->spreadsheetId}/values/" . rawurlencode($intervalo), [
-            'values' => [$colunas], 'majorDimension' => 'ROWS',
-        ], ['valueInputOption' => 'RAW']);
+        return (string) preg_replace('/\s+/', ' ', $semAcento);
     }
 
     private function chaveCache(string $aba): string
@@ -330,8 +419,8 @@ class GoogleSheetsService
     // HTTP (Google Sheets API v4)
     // ------------------------------------------------------------------
 
-    /** @return array<string, mixed> */
-    private function chamarApi(string $metodo, string $caminho, ?array $corpo = null, array $query = []): array
+    /** @return array<string, mixed> (protected para permitir simular a API em testes) */
+    protected function chamarApi(string $metodo, string $caminho, ?array $corpo = null, array $query = []): array
     {
         $url = self::API_BASE . $caminho;
         if (!empty($query)) {
@@ -374,15 +463,10 @@ class GoogleSheetsService
     // Utilitários
     // ------------------------------------------------------------------
 
-    /** @param string[] $colunas */
-    private function ordenarPorColunas(array $colunas, array $dados): array
+    /** Valores novos são gravados como texto (RAW): evita fórmulas e conversões automáticas do Sheets. */
+    private function paraCelula($valor): string
     {
-        $valores = [];
-        foreach ($colunas as $nome) {
-            $valor = $dados[$nome] ?? '';
-            $valores[] = $valor === null ? '' : (string) $valor;
-        }
-        return $valores;
+        return $valor === null ? '' : (string) $valor;
     }
 
     private function linhaVazia(array $valores): bool
@@ -393,14 +477,6 @@ class GoogleSheetsService
             }
         }
         return true;
-    }
-
-    private function extrairNumeroLinha(string $intervaloAtualizado): int
-    {
-        if (preg_match('/![A-Z]+(\d+)/', $intervaloAtualizado, $m)) {
-            return (int) $m[1];
-        }
-        throw new RuntimeException('Não foi possível determinar em qual linha os dados foram inseridos na planilha.');
     }
 
     /** Converte um índice de coluna baseado em 1 (1, 2, 3...) em letra(s) do Google Sheets (A, B, ..., Z, AA...). */

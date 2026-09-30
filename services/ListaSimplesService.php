@@ -14,24 +14,26 @@ declare(strict_types=1);
 
 class ListaSimplesService
 {
-    private GoogleSheetsService $sheets;
-    private string $aba;
+    private RepositorioDados $dados;
+
+    /** Entidade lógica ('cargos', 'secretarias', 'locais', 'secretarios'). */
+    private string $entidade;
 
     /** @var string[] colunas de dados (sem "ID" nem "Ativo"), ex.: ['Nome'] ou ['Nome','Sigla']. */
     private array $colunasDados;
 
     /** @param string[] $colunasDados */
-    public function __construct(string $aba, array $colunasDados, ?GoogleSheetsService $sheets = null)
+    public function __construct(string $entidade, array $colunasDados, ?RepositorioDados $dados = null)
     {
-        $this->aba = $aba;
+        $this->entidade = $entidade;
         $this->colunasDados = $colunasDados;
-        $this->sheets = $sheets ?? new GoogleSheetsService();
+        $this->dados = $dados ?? repositorioDados();
     }
 
     /** @return array<int, array<string, mixed>> todos os registros (inclusive inativos). */
     public function listar(): array
     {
-        return array_map([$this, 'paraCamelCase'], $this->sheets->lerLinhas($this->aba));
+        return array_map([$this, 'paraCamelCase'], $this->dados->listar($this->entidade));
     }
 
     /** @return array<int, array<string, mixed>> apenas os registros ativos, usados para preencher combos no front-end. */
@@ -42,20 +44,18 @@ class ListaSimplesService
 
     public function criar(array $dados): array
     {
-        $id = $this->sheets->proximoId($this->aba);
-        $linha = ['ID' => (string) $id];
+        $linha = [];
         foreach ($this->colunasDados as $coluna) {
             $linha[$coluna] = (string) ($dados[$this->paraCamel($coluna)] ?? '');
         }
         $linha['Ativo'] = $this->boolParaTexto($dados['ativo'] ?? true);
 
-        $this->sheets->inserir($this->aba, $linha);
-        return $this->paraCamelCase($linha);
+        return $this->paraCamelCase($this->dados->inserir($this->entidade, $linha));
     }
 
     public function atualizar(int $id, array $dados): array
     {
-        $atual = $this->sheets->buscarPorId($this->aba, $id);
+        $atual = $this->dados->buscarPorId($this->entidade, $id);
         if ($atual === null) {
             throw new RuntimeException('Registro não encontrado.');
         }
@@ -67,17 +67,13 @@ class ListaSimplesService
         }
         $linha['Ativo'] = array_key_exists('ativo', $dados) ? $this->boolParaTexto($dados['ativo']) : ($atual['Ativo'] ?? 'TRUE');
 
-        $this->sheets->atualizar($this->aba, (int) $atual['_linha'], $linha);
+        $this->dados->atualizar($this->entidade, $id, $linha);
         return $this->paraCamelCase($linha);
     }
 
     public function excluir(int $id): void
     {
-        $atual = $this->sheets->buscarPorId($this->aba, $id);
-        if ($atual === null) {
-            return;
-        }
-        $this->sheets->excluir($this->aba, (int) $atual['_linha']);
+        $this->dados->excluir($this->entidade, $id);
     }
 
     /**
@@ -87,7 +83,7 @@ class ListaSimplesService
      */
     public function semearSeVazio(array $sementes): void
     {
-        if (!empty($this->sheets->lerLinhas($this->aba))) {
+        if (!empty($this->dados->listar($this->entidade))) {
             return;
         }
         foreach ($sementes as $semente) {
