@@ -8,28 +8,73 @@ Voluntário (ANEXO V)** em PDF e DOCX a partir dos dados cadastrados.
 
 - **Front-end**: HTML5, CSS3 e JavaScript puro (`fetch` para consumir a API).
 - **Back-end**: PHP 8 (sem framework), com uma pequena camada de rotas em `api/`.
-- **Banco de dados**: MySQL.
+- **Banco de dados**: **Google Sheets** (planilha usada como banco de dados
+  *temporário* — veja a seção [Google Sheets como banco de dados](#3-google-sheets-como-banco-de-dados)).
+  A arquitetura foi feita em camadas para permitir, no futuro, substituir o
+  Google Sheets por MySQL sem reconstruir a interface (veja
+  [Migração futura para MySQL](#4-migração-futura-para-mysql)).
 - **Geração de documentos**: [PhpOffice/PhpWord](https://github.com/PHPOffice/PHPWord)
   (DOCX, a partir de um modelo real) e [Dompdf](https://github.com/dompdf/dompdf) (PDF).
+
+## Arquitetura em camadas
+
+```
+Interface (HTML/JS)  →  API PHP (api/*.php)  →  Service (services/*.php)  →  GoogleSheetsService  →  Google Sheets
+```
+
+- `api/*.php`: endpoints HTTP (rotas), só cuidam de request/response HTTP.
+- `src/VoluntarioRepository.php` e `src/DocumentoRepository.php`: camada de
+  compatibilidade que expõe a mesma interface usada pelas rotas e junta
+  voluntário + contrato num único objeto (como o front-end espera).
+- `services/VoluntarioService.php`, `services/ContratoService.php`,
+  `services/DocumentoService.php`, `services/ListaSimplesService.php`: regras
+  de negócio de cada entidade (validação de CPF único, cálculo de status,
+  versionamento de documentos, etc.).
+- `services/GoogleSheetsService.php`: **única** classe do sistema que fala
+  diretamente com a Google Sheets API. Sabe ler/inserir/atualizar/excluir
+  linhas por nome de coluna, autenticar com uma Service Account e criar
+  abas/cabeçalhos automaticamente se não existirem.
+
+Nenhuma credencial do Google fica no HTML, CSS ou JavaScript — tudo passa
+pelo PHP, que é o único lugar que lê o arquivo de credenciais.
 
 ## Estrutura do projeto
 
 ```
-api/                 Endpoints HTTP (voluntarios.php, documentos.php)
-config/database.php  Configuração de conexão com o MySQL
-src/                 Classes PHP (Database, Repositories, Validator, TermoAdesaoService)
-sql/schema.sql        Script de criação do banco (tabelas voluntarios e documentos_gerados)
-templates/           Modelo DOCX (anexo_v_modelo.docx) e modelo HTML do PDF (anexo_v_pdf.php)
-scripts/              Script utilitário para (re)gerar o modelo DOCX a partir do zero
-storage/              Fotos enviadas e documentos gerados (criado automaticamente)
-js/, css/, *.html      Front-end (cadastro, listagem, visualização, geração do termo)
+start-server.bat        Inicia o sistema (PHP embutido + navegador) com duplo clique
+index.html, voluntarios.html, cadastro.html, visualizar.html, gerar-termo.html
+                         Páginas do front-end (HTML + JS puro)
+api/                     Endpoints HTTP: voluntarios, contratos, documentos,
+                         cargos, secretarias, locais, secretarios
+config/
+  google-sheets.php      Configuração centralizada (ID da planilha, abas, colunas)
+  credentials/           Chave da Service Account do Google (NÃO versionada)
+services/
+  GoogleSheetsService.php  Comunicação de baixo nível com a Google Sheets API
+  VoluntarioService.php    Regras de negócio da aba "Voluntarios"
+  ContratoService.php      Regras de negócio da aba "Contratos"
+  DocumentoService.php     Regras de negócio da aba "Documentos"
+  ListaSimplesService.php  CRUD genérico das abas de apoio (Cargos/Secretarias/Locais/Secretarios)
+src/
+  VoluntarioRepository.php Facade que junta voluntário + contrato (usado pelas rotas)
+  DocumentoRepository.php  Facade sobre DocumentoService
+  TermoAdesaoService.php   Geração do Termo de Adesão (PDF/DOCX)
+  Validator.php            Validações de servidor (espelham as do front-end)
+templates/               Modelo DOCX (anexo_v_modelo.docx) e modelo HTML do PDF (anexo_v_pdf.php)
+uploads/voluntarios/     Fotos enviadas no cadastro (criado automaticamente)
+documentos/termos/       Termos de Adesão gerados em PDF/DOCX (criado automaticamente)
+logs/                    Reservado para logs do sistema
+sql/schema.sql           Script MySQL (referência para a futura migração — não usado hoje)
+scripts/                 Script utilitário para (re)gerar o modelo DOCX a partir do zero
+js/, css/                Front-end (cadastro, listagem, visualização, geração do termo)
 ```
 
 ## 1. Requisitos
 
-- PHP 8.1+ com as extensões `pdo_mysql`, `mbstring`, `zip`, `dom`, `xml`, `curl`, `fileinfo`.
-- MySQL 5.7+/8 (ou o MySQL que acompanha o XAMPP).
+- PHP 8.1+ com as extensões `curl`, `mbstring`, `zip`, `dom`, `xml`, `fileinfo`.
 - [Composer](https://getcomposer.org/).
+- Uma conta Google com acesso para criar um projeto no Google Cloud e uma
+  planilha no Google Sheets.
 
 ## 2. Instalação
 
@@ -37,26 +82,111 @@ js/, css/, *.html      Front-end (cadastro, listagem, visualização, geração 
 # 1) Instalar as dependências PHP
 composer install
 
-# 2) Criar o banco e as tabelas
-mysql -u root < sql/schema.sql
-# (ou importe sql/schema.sql pelo phpMyAdmin)
+# 2) Configurar o acesso ao Google Sheets (veja a seção 3 abaixo)
 
-# 3) Ajustar credenciais do banco, se necessário
-#    Por padrão usa host=127.0.0.1, porta=3306, usuário=root, senha vazia
-#    (valores padrão do XAMPP). Pode sobrescrever com variáveis de ambiente:
-#    DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS
-
-# 4) Iniciar o servidor (opção simples, sem precisar do Apache do XAMPP)
-php -S 127.0.0.1:8000
+# 3) Iniciar o sistema
+start-server.bat
 ```
 
-Depois é só acessar `http://127.0.0.1:8000/index.html`.
+Isso abre automaticamente `http://localhost:8000` no navegador. Se preferir
+iniciar manualmente: `php -S 127.0.0.1:8000` e acesse
+`http://127.0.0.1:8000/index.html`.
 
-Se preferir usar o Apache do XAMPP: copie/link a pasta do projeto para
-`C:\xampp\htdocs\volun01` e acesse `http://localhost/volun01/index.html`
-(o MySQL do XAMPP também precisa estar em execução).
+## 3. Google Sheets como banco de dados
 
-## 3. Sobre o modelo do Termo de Adesão
+O Google Sheets é usado como banco de dados **temporário** do sistema. A
+planilha utilizada é:
+
+<https://docs.google.com/spreadsheets/d/1pTZ9okHYFLq66Wqc6nLr0r8jE9XdTiF3j2kwY-laTg4/edit>
+
+O ID dessa planilha já vem configurado por padrão em `config/google-sheets.php`
+(pode ser sobrescrito pela variável de ambiente `GOOGLE_SHEETS_SPREADSHEET_ID`,
+útil para usar uma cópia/planilha de testes).
+
+O sistema fala com o Google Sheets usando a **Sheets API v4** autenticada por
+uma **Service Account** (sem nenhuma interação/login do usuário final). Passo
+a passo para configurar:
+
+1. Acesse o [Google Cloud Console](https://console.cloud.google.com/) e crie
+   (ou selecione) um projeto.
+2. Em **APIs e serviços → Biblioteca**, ative a **Google Sheets API**.
+3. Em **APIs e serviços → Credenciais → Criar credenciais → Conta de
+   serviço**, crie uma Service Account (não precisa de papéis/roles no
+   projeto).
+4. Abra a Service Account criada → aba **Chaves** → **Adicionar chave →
+   Criar nova chave → JSON**. Um arquivo `.json` será baixado.
+5. Renomeie esse arquivo para `service-account.json` e coloque-o em:
+   ```
+   config/credentials/service-account.json
+   ```
+   Esse arquivo **nunca** deve ser commitado (já está listado no
+   `.gitignore`).
+6. Abra o arquivo JSON e copie o valor do campo `client_email`
+   (algo como `nome@projeto.iam.gserviceaccount.com`).
+7. Abra a planilha do Google Sheets, clique em **Compartilhar** e adicione
+   esse e-mail com permissão de **Editor**.
+8. Pronto. Na primeira vez que o sistema for usado, ele cria automaticamente
+   (se ainda não existirem) as abas e os respectivos cabeçalhos descritos
+   abaixo — não é necessário criar nada manualmente na planilha.
+
+Se preferir usar outra planilha (ex.: uma cópia para testes), basta trocar o
+ID em `config/google-sheets.php` ou na variável de ambiente
+`GOOGLE_SHEETS_SPREADSHEET_ID`, e compartilhá-la com o mesmo e-mail da Service
+Account.
+
+### Abas (tabs) utilizadas
+
+| Aba | Colunas |
+|---|---|
+| `Voluntarios` | ID, Foto, Nome, CPF, RG, Orgao Expedidor, Data Expedicao RG, Data Nascimento, Idade, Sexo, Escolaridade, Estado Civil, CEP, Logradouro, Numero, Complemento, Bairro, Cidade, Estado, Data Cadastro |
+| `Contratos` | ID, ID Voluntario, Carga Horaria, Cargo, Local Prestacao, Data Inicio, Data Termino, Horario Inicio, Horario Termino, Dias Semana, Secretaria, Nome Secretario, Status, Data Cadastro |
+| `Cargos` | ID, Nome, Ativo |
+| `Secretarias` | ID, Nome, Sigla, Ativo |
+| `Locais` | ID, Nome, Endereco, Ativo |
+| `Secretarios` | ID, ID Secretaria, Nome, Ativo |
+| `Documentos` | ID, ID Voluntario, Tipo Documento, Nome Arquivo, Caminho Arquivo, Versao, Usuario Responsavel, Data Geracao |
+
+### Decisões de implementação sobre o Google Sheets (não especificadas literalmente)
+
+- **Voluntário + Contrato "achatados" na API**: a especificação separa
+  voluntário e contrato em duas abas (para já deixar o modelo pronto para um
+  histórico de múltiplos contratos por voluntário), mas a interface hoje
+  trabalha com **um contrato vigente por voluntário** (o mais recente). O
+  `src/VoluntarioRepository.php` junta os dois numa única resposta, como o
+  front-end sempre esperou — nenhuma tela precisou mudar por causa da
+  separação em abas.
+- **Coluna "Status" da aba Contratos**: nunca é lida como fonte de verdade —
+  é sempre recalculada a partir das datas (A_INICIAR/ATIVO/ENCERRADO) tanto no
+  PHP quanto no JavaScript. A coluna existe só para quem abrir a planilha
+  diretamente conseguir ler o status sem depender do sistema.
+- **Coluna "Idade" da aba Voluntarios**: idem — é sempre recalculada a partir
+  da Data de Nascimento; nunca é editável pelo usuário.
+- **IDs**: como o Google Sheets não tem auto-incremento, o `GoogleSheetsService`
+  calcula o próximo ID como `MAIOR ID ATUAL + 1` a cada inserção.
+- **Criação automática de abas/cabeçalhos**: se uma aba configurada em
+  `config/google-sheets.php` não existir na planilha (ou existir vazia), o
+  `GoogleSheetsService` a cria e escreve o cabeçalho automaticamente na
+  primeira vez que for usada.
+- **Cargos/Secretarias/Locais/Secretarios**: usados para popular os campos de
+  seleção do formulário de cadastro (com endpoints próprios em `api/`). As
+  listas `Cargos`, `Secretarias` e `Secretarios` são semeadas automaticamente
+  com valores padrão na primeira execução, caso estejam vazias; `Locais` fica
+  vazia até a Prefeitura cadastrar os locais pela própria interface (via
+  opção "Outro (especificar)" no formulário).
+
+## 4. Migração futura para MySQL
+
+O sistema foi organizado para que, no futuro, o Google Sheets possa ser
+substituído por MySQL **sem reconstruir a interface**: bastaria criar um
+`MySQLVoluntarioService`, `MySQLContratoService` etc. com os mesmos métodos
+públicos de `services/VoluntarioService.php` e `services/ContratoService.php`,
+e trocar a instanciação em `src/VoluntarioRepository.php`/`src/DocumentoRepository.php`.
+Nenhuma rota (`api/*.php`) nem página do front-end precisaria mudar.
+
+O arquivo `sql/schema.sql` foi mantido no repositório como referência para
+essa futura migração (ele não é usado pelo sistema atualmente).
+
+## 5. Sobre o modelo do Termo de Adesão
 
 O modelo **ANEXO V** fornecido pela Prefeitura foi transcrito literalmente em
 dois formatos, mantendo cabeçalho, numeração, texto das 9 cláusulas e campos de
@@ -89,20 +219,27 @@ preenchidos automaticamente.
   derivadas automaticamente do campo "Secretaria" (ex.: "Secretaria Municipal de
   Saúde" → "Secretário(a) Municipal de Saúde"), pois o sistema suporta mais de
   uma secretaria além de Educação.
-- **"Usuário responsável pela geração"** (coluna em `documentos_gerados`): como
+- **"Usuário responsável pela geração"** (coluna na aba `Documentos`): como
   o sistema não possui um módulo de login, é gravado como `"Administrador"` por
   padrão.
+- **Nome físico dos arquivos** em `documentos/termos/`: para o usuário, o
+  arquivo baixado sempre se chama `Termo_Adesao_Nome_do_Voluntario.pdf` (ou
+  `.docx`), como pedido na especificação. Internamente, porém, o nome físico
+  do arquivo em disco inclui o ID do voluntário e o número da versão (ex.:
+  `Nome_do_Voluntario_12_v2_pdf.pdf`), para nunca colidir entre voluntários
+  com nomes iguais nem sobrescrever versões antigas do histórico de
+  documentos.
 
-## 4. Fluxo do sistema
+## 6. Fluxo do sistema
 
 ```
-Adicionar Voluntário → Preencher dados → Salvar (MySQL)
+Adicionar Voluntário → Preencher dados → Salvar (Google Sheets)
         → Visualizar voluntário → "Gerar Termo de Adesão"
         → Pré-visualização (HTML) → Gerar PDF / DOCX
-        → Registro em `documentos_gerados` → Histórico de Documentos
+        → Registro na aba "Documentos" → Histórico de Documentos
 ```
 
-## 5. Regras de validação aplicadas (front-end e back-end)
+## 7. Regras de validação aplicadas (front-end e back-end)
 
 - Todos os campos marcados como obrigatórios são exigidos antes de salvar.
 - CPF deve ser válido e único.
@@ -113,4 +250,16 @@ Adicionar Voluntário → Preencher dados → Salvar (MySQL)
 - Geração do Termo é bloqueada se houver dados obrigatórios pendentes, com a
   lista de pendências exibida ao usuário.
 - Cada geração (PDF ou DOCX) cria uma nova versão no histórico
-  (`documentos_gerados`), preservando os arquivos anteriores em disco.
+  (aba `Documentos`), preservando os arquivos anteriores em disco.
+
+## 8. Solução de problemas
+
+- **"PHP não foi encontrado"** ao rodar `start-server.bat`: instale o PHP e
+  adicione-o ao PATH do Windows (a janela fica aberta para você ler a
+  mensagem com calma).
+- **"Credenciais do Google Sheets não encontradas..."**: siga o passo a passo
+  da seção 3 e confirme que o arquivo está em
+  `config/credentials/service-account.json`.
+- **Erro 403 da API do Google**: confirme que a planilha foi compartilhada
+  (com permissão de Editor) com o e-mail (`client_email`) que está dentro do
+  arquivo JSON da Service Account.

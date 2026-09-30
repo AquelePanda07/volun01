@@ -1,6 +1,16 @@
 -- ---------------------------------------------------------------------
 -- Sistema de Cadastro e Gestão de Voluntários
 -- Banco de dados: MySQL
+--
+-- ATENÇÃO: este script NÃO é utilizado pelo sistema atualmente. O banco
+-- de dados temporário do sistema é o Google Sheets (ver
+-- config/google-sheets.php e services/GoogleSheetsService.php).
+-- Este arquivo fica aqui apenas como referência para uma FUTURA
+-- migração do Google Sheets para MySQL (ver seção "Migração futura
+-- para MySQL" do README.md). As tabelas abaixo refletem o modelo de
+-- dados antigo (voluntário + contrato numa linha só); o modelo atual
+-- no Google Sheets já separa "Voluntarios" e "Contratos" em abas
+-- distintas, ligadas por "ID Voluntario".
 -- ---------------------------------------------------------------------
 
 CREATE DATABASE IF NOT EXISTS gestao_voluntarios

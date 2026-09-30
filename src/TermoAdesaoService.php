@@ -50,7 +50,10 @@ class TermoAdesaoService
     {
         $this->templateDocx = __DIR__ . '/../templates/anexo_v_modelo.docx';
         $this->templatePdf = __DIR__ . '/../templates/anexo_v_pdf.php';
-        $this->storageDir = __DIR__ . '/../storage/documentos';
+        $this->storageDir = __DIR__ . '/../documentos/termos';
+        if (!is_dir($this->storageDir)) {
+            mkdir($this->storageDir, 0775, true);
+        }
     }
 
     /**
@@ -73,7 +76,7 @@ class TermoAdesaoService
         }
 
         $pasta = $this->prepararPastaVoluntario((int) $voluntario['id']);
-        $caminhoInterno = $pasta . "/v{$versao}_docx.docx";
+        $caminhoInterno = $pasta . "/{$this->slugNome($voluntario['nome'])}_{$voluntario['id']}_v{$versao}_docx.docx";
         $processor->saveAs($caminhoInterno);
 
         return $this->montarMetadadosArquivo($voluntario, 'docx', $versao, $caminhoInterno);
@@ -94,7 +97,7 @@ class TermoAdesaoService
         $dompdf->render();
 
         $pasta = $this->prepararPastaVoluntario((int) $voluntario['id']);
-        $caminhoInterno = $pasta . "/v{$versao}_pdf.pdf";
+        $caminhoInterno = $pasta . "/{$this->slugNome($voluntario['nome'])}_{$voluntario['id']}_v{$versao}_pdf.pdf";
         file_put_contents($caminhoInterno, $dompdf->output());
 
         return $this->montarMetadadosArquivo($voluntario, 'pdf', $versao, $caminhoInterno);
@@ -114,8 +117,12 @@ class TermoAdesaoService
     private function montarMetadadosArquivo(array $voluntario, string $formato, int $versao, string $caminhoInterno): array
     {
         $extensao = $formato === 'pdf' ? 'pdf' : 'docx';
+        // Nome "bonito" sugerido ao usuário no download (especificação, seção 18).
+        // O nome físico em disco (caminhoInterno) inclui ID e versão para nunca
+        // colidir entre voluntários com nomes iguais nem sobrescrever versões
+        // anteriores (histórico de documentos, seção 17).
         $nomeExibicao = 'Termo_Adesao_' . $this->slugNome($voluntario['nome']) . '.' . $extensao;
-        $caminhoRelativo = 'storage/documentos/' . $voluntario['id'] . '/' . basename($caminhoInterno);
+        $caminhoRelativo = 'documentos/termos/' . basename($caminhoInterno);
 
         return [
             'nomeArquivo' => $nomeExibicao,
@@ -128,11 +135,7 @@ class TermoAdesaoService
 
     private function prepararPastaVoluntario(int $idVoluntario): string
     {
-        $pasta = $this->storageDir . '/' . $idVoluntario;
-        if (!is_dir($pasta)) {
-            mkdir($pasta, 0775, true);
-        }
-        return $pasta;
+        return $this->storageDir;
     }
 
     /** Monta o array (chaves em MAIÚSCULAS, iguais às do modelo) usado para preencher o Termo. */

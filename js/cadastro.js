@@ -2,13 +2,15 @@
  * cadastro.js
  * Lógica do formulário de cadastro/edição de voluntários.
  * Responsável por: preview de foto (Base64), máscaras de CPF/CEP,
- * cálculo automático de idade, validações e persistência via API (PHP/MySQL).
+ * cálculo automático de idade, validações, carregamento das listas
+ * dinâmicas (Cargos/Secretarias/Locais/Secretarios) e persistência via
+ * API (PHP + Google Sheets).
  */
 
 let FOTO_BASE64 = '';
 let ID_EDICAO = null;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(location.search);
   ID_EDICAO = params.get('id');
 
@@ -17,6 +19,9 @@ document.addEventListener('DOMContentLoaded', () => {
   configurarUploadFoto();
   configurarSecretariaOutra();
   configurarNomeSecretarioOutra();
+  configurarLocalPrestacaoOutra();
+
+  await carregarListasDinamicas();
 
   if (ID_EDICAO) {
     carregarParaEdicao(ID_EDICAO);
@@ -24,6 +29,67 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('form-voluntario').addEventListener('submit', aoSubmeter);
 });
+
+/* ------------------------------------------------------------------ */
+/* Listas dinâmicas (Cargos, Secretarias, Locais, Secretarios)          */
+/* Carregadas do Google Sheets via api/*.php e usadas para popular os   */
+/* campos de seleção. Em caso de falha (ex.: credenciais do Google      */
+/* Sheets ainda não configuradas), mantém as opções já existentes no    */
+/* HTML como alternativa, para o formulário continuar utilizável.       */
+/* ------------------------------------------------------------------ */
+async function carregarListasDinamicas() {
+  await Promise.all([
+    popularSelect('cargo', 'api/cargos.php?ativos=1', item => ({ valor: item.nome, texto: item.nome })),
+    popularSelectComOutra('secretaria', 'api/secretarias.php?ativos=1', item => ({ valor: item.nome, texto: item.nome })),
+    popularSelectComOutra('nomeSecretario', 'api/secretarios.php?ativos=1', item => ({ valor: item.nome, texto: item.nome })),
+    popularSelectComOutra('localPrestacao', 'api/locais.php?ativos=1', item => ({ valor: item.nome, texto: item.nome })),
+  ]);
+}
+
+/** Preenche um <select> simples (sem opção "outra") com os itens vindos da API. */
+async function popularSelect(idSelect, endpoint, mapear) {
+  const select = document.getElementById(idSelect);
+  if (!select) return;
+  try {
+    const resposta = await apiFetch(endpoint);
+    const valorAtual = select.value;
+    const existentes = new Set(Array.from(select.options).map(o => o.value));
+    (resposta.dados || []).forEach(item => {
+      const { valor, texto } = mapear(item);
+      if (existentes.has(valor)) return;
+      const opt = document.createElement('option');
+      opt.value = valor;
+      opt.textContent = texto;
+      select.appendChild(opt);
+    });
+    if (valorAtual) select.value = valorAtual;
+  } catch (erro) {
+    // Sem conexão com o Google Sheets: mantém as opções fixas do HTML.
+  }
+}
+
+/** Preenche um <select> que possui a opção "Outra (especificar)" por último. */
+async function popularSelectComOutra(idSelect, endpoint, mapear) {
+  const select = document.getElementById(idSelect);
+  if (!select) return;
+  try {
+    const resposta = await apiFetch(endpoint);
+    const valorAtual = select.value;
+    const opcaoOutra = select.querySelector('option[value="__outra"]');
+    const existentes = new Set(Array.from(select.options).map(o => o.value));
+    (resposta.dados || []).forEach(item => {
+      const { valor, texto } = mapear(item);
+      if (existentes.has(valor)) return;
+      const opt = document.createElement('option');
+      opt.value = valor;
+      opt.textContent = texto;
+      select.insertBefore(opt, opcaoOutra);
+    });
+    if (valorAtual) select.value = valorAtual;
+  } catch (erro) {
+    // Sem conexão com o Google Sheets: mantém as opções fixas do HTML.
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /* Modo edição: ajusta títulos e preenche o formulário                 */
@@ -44,7 +110,7 @@ async function carregarParaEdicao(id) {
 
   const campos = ['nome', 'cpf', 'rg', 'rgOrgaoExpedidor', 'rgDataExpedicao', 'dataNascimento', 'sexo',
     'escolaridade', 'estadoCivil', 'cargaHoraria', 'cargo', 'cep', 'logradouro', 'numero', 'complemento',
-    'bairro', 'cidade', 'estado', 'localPrestacao', 'dataInicio', 'dataTermino'];
+    'bairro', 'cidade', 'estado', 'dataInicio', 'dataTermino'];
 
   campos.forEach(campo => {
     const el = document.getElementById(campo);
@@ -83,6 +149,17 @@ async function carregarParaEdicao(id) {
     selectSecretario.value = '__outra';
     document.getElementById('nomeSecretarioOutra').style.display = 'block';
     document.getElementById('nomeSecretarioOutra').value = voluntario.nomeSecretario;
+  }
+
+  // Local de prestação de serviço: pode ser uma opção da lista ou "outra"
+  const selectLocal = document.getElementById('localPrestacao');
+  const opcaoExisteLocal = Array.from(selectLocal.options).some(o => o.value === voluntario.localPrestacao);
+  if (opcaoExisteLocal) {
+    selectLocal.value = voluntario.localPrestacao;
+  } else if (voluntario.localPrestacao) {
+    selectLocal.value = '__outra';
+    document.getElementById('localPrestacaoOutra').style.display = 'block';
+    document.getElementById('localPrestacaoOutra').value = voluntario.localPrestacao;
   }
 
   if (voluntario.foto) {
@@ -181,6 +258,24 @@ function obterNomeSecretario() {
   return select.value;
 }
 
+/* ------------------------------------------------------------------ */
+/* Campo "Local de prestação de serviço": exibe input livre quando "Outro" é selecionado */
+/* ------------------------------------------------------------------ */
+function configurarLocalPrestacaoOutra() {
+  const select = document.getElementById('localPrestacao');
+  const outraInput = document.getElementById('localPrestacaoOutra');
+  select.addEventListener('change', () => {
+    outraInput.style.display = select.value === '__outra' ? 'block' : 'none';
+    if (select.value !== '__outra') outraInput.value = '';
+  });
+}
+
+function obterLocalPrestacao() {
+  const select = document.getElementById('localPrestacao');
+  if (select.value === '__outra') return document.getElementById('localPrestacaoOutra').value.trim();
+  return select.value;
+}
+
 function obterDiasSemanaSelecionados() {
   return Array.from(document.querySelectorAll('input[name="diaSemana"]:checked')).map(cb => cb.value);
 }
@@ -220,7 +315,7 @@ function validarFormulario() {
   const bairro = document.getElementById('bairro').value.trim();
   const cidade = document.getElementById('cidade').value.trim();
   const estado = document.getElementById('estado').value;
-  const localPrestacao = document.getElementById('localPrestacao').value.trim();
+  const localPrestacao = obterLocalPrestacao();
   const dataInicio = document.getElementById('dataInicio').value;
   const dataTermino = document.getElementById('dataTermino').value;
   const horarioInicio = document.getElementById('horarioInicio').value;
@@ -311,7 +406,7 @@ async function aoSubmeter(evento) {
     bairro: document.getElementById('bairro').value.trim(),
     cidade: document.getElementById('cidade').value.trim(),
     estado: document.getElementById('estado').value,
-    localPrestacao: document.getElementById('localPrestacao').value.trim(),
+    localPrestacao: obterLocalPrestacao(),
     dataInicio: document.getElementById('dataInicio').value,
     dataTermino: document.getElementById('dataTermino').value,
     horarioInicio: document.getElementById('horarioInicio').value,

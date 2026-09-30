@@ -1,7 +1,10 @@
 /vendor/
-/storage/fotos/*
-!/storage/fotos/.gitkeep
-/storage/documentos/*
-!/storage/documentos/.gitkeep
+/uploads/voluntarios/*
+!/uploads/voluntarios/.gitkeep
+/documentos/termos/*
+!/documentos/termos/.gitkeep
+/config/credentials/*.json
+/logs/*
+!/logs/.gitkeep
 composer.phar
 *.log

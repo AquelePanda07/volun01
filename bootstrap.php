@@ -10,8 +10,12 @@ declare(strict_types=1);
 date_default_timezone_set('America/Porto_Velho');
 
 require_once __DIR__ . '/vendor/autoload.php';
-require_once __DIR__ . '/src/Database.php';
 require_once __DIR__ . '/src/Validator.php';
+require_once __DIR__ . '/services/GoogleSheetsService.php';
+require_once __DIR__ . '/services/VoluntarioService.php';
+require_once __DIR__ . '/services/ContratoService.php';
+require_once __DIR__ . '/services/DocumentoService.php';
+require_once __DIR__ . '/services/ListaSimplesService.php';
 require_once __DIR__ . '/src/VoluntarioRepository.php';
 require_once __DIR__ . '/src/DocumentoRepository.php';
 require_once __DIR__ . '/src/TermoAdesaoService.php';

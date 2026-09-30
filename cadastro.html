@@ -246,7 +246,11 @@
 
               <div class="campo campo--full">
                 <label for="localPrestacao">Local de prestação de serviço <span class="obrigatorio">*</span></label>
-                <input type="text" id="localPrestacao" placeholder="Ex: Escola Municipal XYZ, Secretaria Municipal de Educação...">
+                <select id="localPrestacao">
+                  <option value="">Selecione...</option>
+                  <option value="__outra">Outro (especificar)</option>
+                </select>
+                <input type="text" id="localPrestacaoOutra" placeholder="Ex: Escola Municipal XYZ, Secretaria Municipal de Educação..." style="margin-top:.5rem; display:none;">
                 <div class="campo-erro" id="erro-localPrestacao">Informe o local de prestação de serviço.</div>
               </div>
 
