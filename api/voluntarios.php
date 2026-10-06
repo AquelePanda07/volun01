@@ -35,7 +35,7 @@ switch ($metodo) {
     case 'POST':
         $dados = lerJsonDaRequisicao();
 
-        $erros = Validator::validarVoluntario($dados, true);
+        $erros = Validator::validarVoluntario($dados);
         if (!empty($dados['cpf']) && $repositorio->existeCpf((string) $dados['cpf'])) {
             $erros[] = 'Já existe um voluntário cadastrado com este CPF.';
         }
@@ -57,9 +57,8 @@ switch ($metodo) {
         }
 
         $dados = lerJsonDaRequisicao();
-        $fotoObrigatoria = empty($existente['foto']) && empty($dados['foto']);
 
-        $erros = Validator::validarVoluntario($dados, $fotoObrigatoria);
+        $erros = Validator::validarVoluntario($dados);
         if (!empty($dados['cpf']) && $repositorio->existeCpf((string) $dados['cpf'], $id)) {
             $erros[] = 'Já existe um voluntário cadastrado com este CPF.';
         }

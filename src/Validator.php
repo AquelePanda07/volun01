@@ -13,9 +13,6 @@ class Validator
     public const CAMPOS_OBRIGATORIOS = [
         'nome' => 'Nome completo',
         'cpf' => 'CPF',
-        'rg' => 'RG',
-        'rgOrgaoExpedidor' => 'Órgão expedidor do RG',
-        'rgDataExpedicao' => 'Data de expedição do RG',
         'dataNascimento' => 'Data de nascimento',
         'sexo' => 'Sexo',
         'escolaridade' => 'Grau de escolaridade',
@@ -42,7 +39,7 @@ class Validator
      * Valida os dados de um voluntário.
      * @return string[] Lista de mensagens de erro (vazia quando válido).
      */
-    public static function validarVoluntario(array $dados, bool $fotoObrigatoria): array
+    public static function validarVoluntario(array $dados): array
     {
         $erros = [];
 
@@ -57,10 +54,6 @@ class Validator
             if ($valor === null || trim((string) $valor) === '') {
                 $erros[] = "Informe: {$rotulo}.";
             }
-        }
-
-        if ($fotoObrigatoria && empty($dados['foto'])) {
-            $erros[] = 'Selecione uma foto para o voluntário.';
         }
 
         if (!empty($dados['cpf']) && !self::validarCPF((string) $dados['cpf'])) {

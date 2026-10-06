@@ -299,8 +299,6 @@ function validarFormulario() {
 
   const nome = document.getElementById('nome').value.trim();
   const cpf = document.getElementById('cpf').value.trim();
-  const rg = document.getElementById('rg').value.trim();
-  const rgOrgaoExpedidor = document.getElementById('rgOrgaoExpedidor').value.trim();
   const rgDataExpedicao = document.getElementById('rgDataExpedicao').value;
   const dataNascimento = document.getElementById('dataNascimento').value;
   const sexo = document.getElementById('sexo').value;
@@ -324,14 +322,10 @@ function validarFormulario() {
   const secretaria = obterSecretaria();
   const nomeSecretario = obterNomeSecretario();
 
-  // Foto: obrigatória apenas em novos cadastros (na edição já existe uma foto salva)
-  marcar('foto', !FOTO_BASE64);
-
+  // Foto, RG, órgão expedidor e data de expedição são opcionais.
   marcar('nome', nome.length === 0);
   marcar('cpf', !validarCPF(cpf));
-  marcar('rg', rg.length === 0);
-  marcar('rgOrgaoExpedidor', rgOrgaoExpedidor.length === 0);
-  marcar('rgDataExpedicao', !rgDataExpedicao || (dataNascimento && rgDataExpedicao < dataNascimento));
+  marcar('rgDataExpedicao', Boolean(rgDataExpedicao && dataNascimento && rgDataExpedicao < dataNascimento));
   marcar('dataNascimento', !dataNascimento);
   marcar('sexo', !sexo);
   marcar('escolaridade', !escolaridade);

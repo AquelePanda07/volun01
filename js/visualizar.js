@@ -57,7 +57,7 @@ function renderizarVoluntario(v) {
 
   document.getElementById('area-dados').innerHTML = `
     <div class="perfil-topo">
-      <img class="perfil-topo__foto" src="${foto}" alt="Foto de ${escapeHtml(v.nome)}">
+      <img class="perfil-topo__foto${v.foto ? ' perfil-topo__foto--clicavel' : ''}" id="foto-perfil" src="${foto}" alt="Foto de ${escapeHtml(v.nome)}"${v.foto ? ' title="Clique para ver a foto completa"' : ''}>
       <div class="perfil-topo__info">
         <h1>${escapeHtml(v.nome)}</h1>
         <div class="perfil-topo__meta">
@@ -112,6 +112,12 @@ function renderizarVoluntario(v) {
       </div>
     </section>
   `;
+
+  if (v.foto) {
+    document.getElementById('foto-perfil').addEventListener('click', () => {
+      mostrarFotoCompleta(v.foto, `Foto de ${v.nome}`);
+    });
+  }
 
   document.getElementById('btn-excluir').addEventListener('click', () => {
     showConfirm({

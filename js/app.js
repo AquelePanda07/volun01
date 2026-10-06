@@ -329,6 +329,38 @@ function showConfirm({ titulo = 'Confirmar ação', mensagem, textoConfirmar = '
 }
 
 /* ------------------------------------------------------------------ */
+/* Visualizador de foto em tamanho completo (sem recorte)              */
+/* ------------------------------------------------------------------ */
+function mostrarFotoCompleta(src, alt = 'Foto') {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay modal-foto';
+  overlay.innerHTML = `
+    <div class="modal-foto__conteudo" role="dialog" aria-modal="true" aria-label="${escapeHtml(alt)}">
+      <button type="button" class="modal-foto__fechar" aria-label="Fechar">&times;</button>
+      <img class="modal-foto__img" src="${src}" alt="${escapeHtml(alt)}">
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => overlay.classList.add('modal-overlay--visivel'));
+
+  function fechar() {
+    document.removeEventListener('keydown', aoTeclar);
+    overlay.classList.remove('modal-overlay--visivel');
+    setTimeout(() => overlay.remove(), 200);
+  }
+  function aoTeclar(e) {
+    if (e.key === 'Escape') fechar();
+  }
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) fechar();
+  });
+  overlay.querySelector('.modal-foto__fechar').addEventListener('click', fechar);
+  document.addEventListener('keydown', aoTeclar);
+  overlay.querySelector('.modal-foto__fechar').focus();
+}
+
+/* ------------------------------------------------------------------ */
 /* Mensagem "flash" (exibida em toast após redirecionar de página)     */
 /* ------------------------------------------------------------------ */
 const FLASH_KEY = 'sgv_flash';

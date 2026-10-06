@@ -668,6 +668,46 @@ table.tabela-voluntarios { width: 100%; border-collapse: collapse; }
 .modal-confirm__icon svg { width: 100%; height: 100%; }
 .modal-confirm__actions { display: flex; justify-content: center; gap: .75rem; margin-top: 1.25rem; }
 
+/* Foto em tamanho completo */
+.modal-foto { background: rgba(10, 16, 24, .85); }
+.modal-foto__conteudo {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  transform: scale(.96);
+  transition: transform .2s ease;
+}
+.modal-overlay--visivel .modal-foto__conteudo { transform: scale(1); }
+.modal-foto__img {
+  display: block;
+  max-width: 90vw;
+  max-height: 90vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: var(--raio);
+  box-shadow: var(--sombra-lg);
+  background: var(--cor-superficie);
+}
+.modal-foto__fechar {
+  position: absolute;
+  top: -.9rem;
+  right: -.9rem;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  border: none;
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--sombra-lg);
+}
+.modal-foto__fechar:hover { background: var(--cor-primaria-clara); }
+.perfil-topo__foto--clicavel { cursor: zoom-in; transition: transform .15s ease; }
+.perfil-topo__foto--clicavel:hover { transform: scale(1.04); }
+
 /* ------------------------------------------------------------------ */
 /* Responsividade geral                                                 */
 /* ------------------------------------------------------------------ */

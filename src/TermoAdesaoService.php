@@ -62,7 +62,7 @@ class TermoAdesaoService
      */
     public function validarParaGeracao(array $voluntario): array
     {
-        return Validator::validarVoluntario($voluntario, false);
+        return Validator::validarVoluntario($voluntario);
     }
 
     /** Gera o DOCX preenchido e devolve metadados do arquivo salvo. */
