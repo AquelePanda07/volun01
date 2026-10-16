@@ -52,7 +52,7 @@ if not exist "documentos\termos" mkdir "documentos\termos" >nul 2>nul
 if not exist "logs" mkdir "logs" >nul 2>nul
 
 set HOST=127.0.0.1
-set PORT=8000
+set PORT=8001
 set URL=http://localhost:%PORT%
 
 echo Iniciando o servidor PHP embutido em %URL% ...

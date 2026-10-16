@@ -1,11 +1,12 @@
 /**
  * voluntarios.js
  * Lógica da página "Voluntários Cadastrados": listagem, pesquisa em tempo
- * real, filtros (status, secretaria, carga horária) e exclusão com
- * confirmação.
+ * real, filtros (status, secretaria, carga horária), exclusão com
+ * confirmação e geração de Termos de Adesão em lote.
  */
 
 let TODOS_VOLUNTARIOS = [];
+const SELECIONADOS = new Set();
 
 document.addEventListener('DOMContentLoaded', async () => {
   await recarregarVoluntarios();
@@ -14,6 +15,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('filtro-status').addEventListener('change', renderizarLista);
   document.getElementById('filtro-secretaria').addEventListener('change', renderizarLista);
   document.getElementById('filtro-carga').addEventListener('change', renderizarLista);
+  document.getElementById('selecionar-todos').addEventListener('change', (e) => {
+    filtrarVoluntarios().forEach(v => e.target.checked ? SELECIONADOS.add(String(v.id)) : SELECIONADOS.delete(String(v.id)));
+    renderizarLista();
+  });
+  document.getElementById('btn-termos-lote').addEventListener('click', abrirModalTermosLote);
 });
 
 async function recarregarVoluntarios() {
@@ -23,6 +29,9 @@ async function recarregarVoluntarios() {
     TODOS_VOLUNTARIOS = [];
     showToast(erro.message || 'Não foi possível carregar os voluntários.', 'erro');
   }
+  // Descarta seleções de voluntários que não existem mais (ex.: excluídos).
+  const idsExistentes = new Set(TODOS_VOLUNTARIOS.map(v => String(v.id)));
+  [...SELECIONADOS].forEach(id => { if (!idsExistentes.has(id)) SELECIONADOS.delete(id); });
   popularFiltroSecretarias();
   renderizarLista();
 }
@@ -71,6 +80,7 @@ function renderizarLista() {
 
   corpo.innerHTML = '';
   cardsContainer.innerHTML = '';
+  atualizarControlesSelecao(lista);
 
   if (lista.length === 0) {
     estadoVazio.style.display = 'block';
@@ -92,7 +102,9 @@ function renderizarLista() {
     // Linha da tabela (telas grandes)
     const tr = document.createElement('tr');
     if (destaquePrazo) tr.setAttribute('style', destaquePrazo);
+    const marcado = SELECIONADOS.has(String(v.id)) ? 'checked' : '';
     tr.innerHTML = `
+      <td class="col-selecao"><input type="checkbox" data-selecionar="${v.id}" ${marcado} aria-label="Selecionar ${escapeHtml(v.nome)}"></td>
       <td>
         <div class="pessoa-cel">
           <img class="avatar-mini" src="${foto}" alt="Foto de ${escapeHtml(v.nome)}">
@@ -120,6 +132,7 @@ function renderizarLista() {
     if (destaquePrazo) card.setAttribute('style', destaquePrazo);
     card.innerHTML = `
       <div class="voluntario-card__topo">
+        <input type="checkbox" data-selecionar="${v.id}" ${marcado} aria-label="Selecionar ${escapeHtml(v.nome)}">
         <img class="avatar-mini" src="${foto}" alt="Foto de ${escapeHtml(v.nome)}">
         <div class="voluntario-card__info">
           <strong>${escapeHtml(v.nome)}</strong>
@@ -137,6 +150,17 @@ function renderizarLista() {
       </div>
     `;
     cardsContainer.appendChild(card);
+  });
+
+  // Liga as caixas de seleção (tabela + cards)
+  document.querySelectorAll('[data-selecionar]').forEach(caixa => {
+    caixa.addEventListener('change', () => {
+      const id = caixa.getAttribute('data-selecionar');
+      caixa.checked ? SELECIONADOS.add(id) : SELECIONADOS.delete(id);
+      // Mantém tabela e card do mesmo voluntário sincronizados.
+      document.querySelectorAll(`[data-selecionar="${id}"]`).forEach(c => { c.checked = caixa.checked; });
+      atualizarControlesSelecao(filtrarVoluntarios());
+    });
   });
 
   // Liga os botões de exclusão (tabela + cards)
@@ -164,6 +188,134 @@ function confirmarExclusao(id) {
       }
     }
   });
+}
+
+/* ------------------------------------------------------------------ */
+/* Geração de Termos de Adesão em lote                                  */
+/* ------------------------------------------------------------------ */
+
+function atualizarControlesSelecao(listaVisivel) {
+  const total = SELECIONADOS.size;
+  document.getElementById('btn-termos-lote').disabled = total === 0;
+  document.getElementById('btn-termos-lote-texto').textContent = total > 0
+    ? `Gerar Termos em Lote (${total})`
+    : 'Gerar Termos em Lote';
+
+  const todos = document.getElementById('selecionar-todos');
+  const marcadosVisiveis = listaVisivel.filter(v => SELECIONADOS.has(String(v.id))).length;
+  todos.checked = listaVisivel.length > 0 && marcadosVisiveis === listaVisivel.length;
+  todos.indeterminate = marcadosVisiveis > 0 && marcadosVisiveis < listaVisivel.length;
+}
+
+function abrirModalTermosLote() {
+  const selecionados = TODOS_VOLUNTARIOS.filter(v => SELECIONADOS.has(String(v.id)));
+  if (selecionados.length === 0) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-box" role="dialog" aria-modal="true" style="max-width:520px; width:95%;">
+      <h3 style="margin-top:0;">Gerar Termos de Adesão em Lote</h3>
+      <p>Serão gerados os Termos de Adesão de <b>${selecionados.length}</b> voluntário(s), entregues em um único arquivo ZIP. Os campos de assinatura permanecerão em branco.</p>
+      <ul class="lote-lista">${selecionados.map(v => `<li>${escapeHtml(v.nome)}</li>`).join('')}</ul>
+      <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-top:1rem;">
+        <div class="campo" style="flex:1; min-width:180px;">
+          <label for="lote-data-emissao">Data de emissão</label>
+          <input type="date" id="lote-data-emissao" value="${hojeISO()}">
+        </div>
+        <div class="campo" style="flex:1; min-width:140px;">
+          <label for="lote-formato">Formato</label>
+          <select id="lote-formato">
+            <option value="pdf">PDF</option>
+            <option value="docx">DOCX</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-confirm__actions" style="justify-content:flex-end;">
+        <button type="button" class="btn btn--outline" data-acao="cancelar">Cancelar</button>
+        <button type="button" class="btn" data-acao="gerar">${icon('checkCircle')} Gerar termos</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => overlay.classList.add('modal-overlay--visivel'));
+
+  let gerando = false;
+  function fechar() {
+    if (gerando) return;
+    overlay.classList.remove('modal-overlay--visivel');
+    setTimeout(() => overlay.remove(), 200);
+  }
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) fechar(); });
+  overlay.querySelector('[data-acao="cancelar"]').addEventListener('click', fechar);
+
+  const botaoGerar = overlay.querySelector('[data-acao="gerar"]');
+  botaoGerar.addEventListener('click', async () => {
+    const dataEmissao = overlay.querySelector('#lote-data-emissao').value;
+    const formato = overlay.querySelector('#lote-formato').value;
+
+    gerando = true;
+    botaoGerar.disabled = true;
+    overlay.querySelector('[data-acao="cancelar"]').disabled = true;
+    botaoGerar.innerHTML = `${icon('clock')} Gerando ${selecionados.length} termo(s)...`;
+
+    try {
+      const resposta = await gerarDocumentosEmLote(selecionados.map(v => v.id), formato, dataEmissao);
+      gerando = false;
+      fechar();
+      showToast(resposta.mensagem, 'sucesso');
+      if (resposta.falhas && resposta.falhas.length) {
+        mostrarFalhasLote(resposta.falhas, resposta.totalGerados);
+      }
+      SELECIONADOS.clear();
+      renderizarLista();
+      window.location.href = resposta.urlDownload;
+    } catch (erro) {
+      gerando = false;
+      fechar();
+      showToast(erro.message || 'Não foi possível gerar os termos em lote.', 'erro');
+      if (erro.falhas && erro.falhas.length) {
+        mostrarFalhasLote(erro.falhas, 0);
+      }
+    }
+  });
+}
+
+function mostrarFalhasLote(falhas, totalGerados) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-box" role="dialog" aria-modal="true" style="max-width:600px; width:95%; max-height:85vh; overflow:auto;">
+      <h3 style="margin-top:0;">${totalGerados > 0 ? 'Alguns termos não foram gerados' : 'Nenhum termo foi gerado'}</h3>
+      <p>${totalGerados > 0 ? `${totalGerados} termo(s) foram gerados. ` : ''}Os voluntários abaixo não puderam ter o termo gerado:</p>
+      ${falhas.map(f => `
+        <div style="margin-bottom:.8rem;">
+          <b>${escapeHtml(f.nome)}</b>
+          <a class="btn btn--outline btn--sm" style="margin-left:.5rem;" href="cadastro.html?id=${encodeURIComponent(f.idVoluntario)}">${icon('edit')} Editar</a>
+          <ul style="margin:.3rem 0 0 1.2rem;">${f.erros.map(e => `<li>${escapeHtml(e)}</li>`).join('')}</ul>
+        </div>
+      `).join('')}
+      <div class="modal-confirm__actions" style="justify-content:flex-end;">
+        <button type="button" class="btn" data-acao="fechar">Fechar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => overlay.classList.add('modal-overlay--visivel'));
+
+  function fechar() {
+    overlay.classList.remove('modal-overlay--visivel');
+    setTimeout(() => overlay.remove(), 200);
+  }
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) fechar(); });
+  overlay.querySelector('[data-acao="fechar"]').addEventListener('click', fechar);
+}
+
+function hojeISO() {
+  const hoje = new Date();
+  const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+  const dia = String(hoje.getDate()).padStart(2, '0');
+  return `${hoje.getFullYear()}-${mes}-${dia}`;
 }
 
 function fotoPadraoSvg(nome) {

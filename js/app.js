@@ -118,6 +118,27 @@ async function gerarDocumento(idVoluntario, formato, dataEmissao) {
   return resposta;
 }
 
+/** Gera o Termo de Adesão de vários voluntários de uma vez (devolve link de um ZIP). */
+async function gerarDocumentosEmLote(idsVoluntarios, formato, dataEmissao) {
+  const resposta = await fetch(`${API_BASE}documentos.php?acao=lote`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    body: JSON.stringify({ idsVoluntarios, formato, dataEmissao }),
+  });
+  let corpo = null;
+  try {
+    corpo = await resposta.json();
+  } catch (e) {
+    throw new ErroApi('Resposta inesperada do servidor.');
+  }
+  if (!resposta.ok || !corpo.sucesso) {
+    const erro = new ErroApi(corpo.mensagem || 'Não foi possível gerar os termos em lote.');
+    erro.falhas = corpo.falhas || [];
+    throw erro;
+  }
+  return corpo;
+}
+
 async function historicoDocumentos(idVoluntario) {
   const resposta = await apiFetch(`documentos.php?acao=historico&id_voluntario=${encodeURIComponent(idVoluntario)}`);
   return resposta.dados;

@@ -518,6 +518,9 @@ table.tabela-voluntarios { width: 100%; border-collapse: collapse; }
   background: var(--cor-primaria-clara);
 }
 .acoes-cel { display: flex; gap: .4rem; }
+.col-selecao { width: 2.5rem; text-align: center; }
+.col-selecao input, .voluntario-card__topo input[type="checkbox"] { width: 1.05rem; height: 1.05rem; cursor: pointer; accent-color: var(--cor-primaria); }
+.lote-lista { max-height: 180px; overflow: auto; margin: .4rem 0 0; padding: .5rem .5rem .5rem 1.6rem; border: 1px solid var(--cor-borda); border-radius: .5rem; }
 
 .badge {
   display: inline-flex;

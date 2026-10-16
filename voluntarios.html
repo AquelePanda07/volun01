@@ -55,6 +55,10 @@
             <p class="page-header__subtitulo">Consulte, edite ou remova os registros de voluntariado</p>
           </div>
           <div class="page-header__acoes">
+            <button type="button" class="btn btn--outline" id="btn-termos-lote" disabled>
+              <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg></span>
+              <span id="btn-termos-lote-texto">Gerar Termos em Lote</span>
+            </button>
             <a class="btn" href="cadastro.html">
               <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></span>
               Adicionar Voluntário
@@ -97,6 +101,7 @@
           <table class="tabela-voluntarios">
             <thead>
               <tr>
+                <th class="col-selecao"><input type="checkbox" id="selecionar-todos" title="Selecionar todos os voluntários listados" aria-label="Selecionar todos"></th>
                 <th>Voluntário</th>
                 <th>Local de Prestação</th>
                 <th>Término do Contrato</th>

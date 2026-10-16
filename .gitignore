@@ -3,6 +3,7 @@
 !/uploads/voluntarios/.gitkeep
 /documentos/termos/*
 !/documentos/termos/.gitkeep
+/documentos/lotes/
 /config/credentials/*.json
 /logs/*
 !/logs/.gitkeep

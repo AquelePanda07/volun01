@@ -29,16 +29,20 @@ $estiloParagrafoJustificado = ['alignment' => Jc::BOTH, 'spaceAfter' => 160];
 $estiloClausulaTitulo = ['bold' => true];
 
 $section = $phpWord->addSection([
-    'marginTop' => 1000,
+    'marginTop' => 1700,
+    'headerHeight' => 300,
     'marginBottom' => 1000,
     'marginLeft' => 1200,
     'marginRight' => 1200,
 ]);
 
 /* ---------------------------- Cabeçalho ---------------------------- */
-$section->addText('PREFEITURA DO MUNICÍPIO DE ITAPUÃ DO OESTE/RO', ['bold' => true, 'size' => 13], ['alignment' => Jc::CENTER]);
-$section->addText('GABINETE MUNICIPAL', ['size' => 11], ['alignment' => Jc::CENTER]);
-$section->addTextBreak(1);
+// Brasão + "ESTADO DE RONDÔNIA / PREFEITURA DO MUNICÍPIO DE ITAPUÃ DO OESTE",
+// repetido no topo de todas as páginas, como no modelo oficial.
+$section->addHeader()->addImage(
+    __DIR__ . '/../img/cabecalho_prefeitura.jpg',
+    ['width' => 451, 'height' => 53, 'alignment' => Jc::CENTER]
+);
 $section->addText('ANEXO V', ['bold' => true, 'size' => 13], ['alignment' => Jc::CENTER]);
 $section->addTextBreak(1);
 

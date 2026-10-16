@@ -19,17 +19,22 @@ if (!function_exists('tv')) {
         return htmlspecialchars((string) ($d[$chave] ?? ''), ENT_QUOTES, 'UTF-8');
     }
 }
+
+// Cabeçalho oficial (brasão + "ESTADO DE RONDÔNIA / PREFEITURA DO MUNICÍPIO DE
+// ITAPUÃ DO OESTE"), embutido como data URI para funcionar no Dompdf sem
+// acesso remoto e também na pré-visualização no navegador.
+$cabecalhoImg = 'data:image/jpeg;base64,' . base64_encode((string) file_get_contents(__DIR__ . '/../img/cabecalho_prefeitura.jpg'));
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <style>
-    @page { margin: 90px 70px 80px 70px; }
+    @page { margin: 110px 70px 80px 70px; }
+    .cabecalho-pagina { position: fixed; top: -95px; left: 0; right: 0; text-align: center; }
+    .cabecalho-pagina img { width: 451pt; height: auto; }
     body { font-family: 'DejaVu Sans', sans-serif; font-size: 11px; color: #111; line-height: 1.45; }
     h1, h2 { text-align: center; margin: 0; }
-    .cabecalho-orgao { font-weight: bold; font-size: 13px; }
-    .cabecalho-gabinete { font-size: 11px; margin-bottom: 14px; }
     .titulo-anexo { font-weight: bold; font-size: 13px; margin: 10px 0; }
     .caixa-titulo { border: 1px solid #000; background: #d9d9d9; padding: 8px; text-align: center; font-weight: bold; margin: 12px 0 18px 0; }
     p { text-align: justify; margin: 0 0 10px 0; }
@@ -40,8 +45,7 @@ if (!function_exists('tv')) {
 </style>
 </head>
 <body>
-    <div class="cabecalho-orgao" style="text-align:center;">PREFEITURA DO MUNICÍPIO DE ITAPUÃ DO OESTE/RO</div>
-    <div class="cabecalho-orgao" style="text-align:center;">GABINETE MUNICIPAL</div>
+    <div class="cabecalho-pagina"><img src="<?= $cabecalhoImg ?>" alt="Estado de Rondônia - Prefeitura do Município de Itapuã do Oeste"></div>
 
     <div class="titulo-anexo">ANEXO V</div>
 
