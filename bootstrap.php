@@ -13,6 +13,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/src/Validator.php';
 require_once __DIR__ . '/services/RepositorioDados.php';
 require_once __DIR__ . '/services/GoogleSheetsService.php';
+require_once __DIR__ . '/services/MySQLService.php';
 require_once __DIR__ . '/services/VoluntarioService.php';
 require_once __DIR__ . '/services/ContratoService.php';
 require_once __DIR__ . '/services/DocumentoService.php';
@@ -23,16 +24,18 @@ require_once __DIR__ . '/src/TermoAdesaoService.php';
 
 /**
  * Armazenamento de dados usado por todo o sistema (instância única por
- * requisição). ÚNICO ponto a alterar numa futura migração para MySQL:
- *
- *     return $instancia ??= new MySQLService();
- *
- * (MySQLService deve estender RepositorioDados — ver services/RepositorioDados.php.)
+ * requisição): MySQL ou Google Sheets, conforme o "driver" em
+ * config/database.php. Os dois estendem RepositorioDados, então o
+ * restante do sistema não sabe (nem precisa saber) qual está em uso.
  */
 function repositorioDados(): RepositorioDados
 {
     static $instancia = null;
-    return $instancia ??= new GoogleSheetsService();
+    if ($instancia === null) {
+        $driver = (require __DIR__ . '/config/database.php')['driver'];
+        $instancia = $driver === 'google_sheets' ? new GoogleSheetsService() : new MySQLService();
+    }
+    return $instancia;
 }
 
 /** Acrescenta uma linha em logs/app.log (falhas de escrita no log são ignoradas). */

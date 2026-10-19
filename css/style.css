@@ -509,6 +509,8 @@ table.tabela-voluntarios { width: 100%; border-collapse: collapse; }
 .tabela-voluntarios tbody tr:last-child td { border-bottom: none; }
 
 .pessoa-cel { display: flex; align-items: center; gap: .7rem; }
+.pessoa-cel__info strong { display: block; }
+.pessoa-cel__info span { font-size: .8rem; color: var(--cor-texto-suave); }
 .avatar-mini {
   width: 42px;
   height: 42px;

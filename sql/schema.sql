@@ -1,84 +1,100 @@
 -- ---------------------------------------------------------------------
 -- Sistema de Cadastro e Gestão de Voluntários
--- Banco de dados: MySQL
+-- Banco de dados: MySQL/MariaDB (XAMPP)
 --
--- ATENÇÃO: este script NÃO é utilizado pelo sistema atualmente. O banco
--- de dados temporário do sistema é o Google Sheets (ver
--- config/google-sheets.php e services/GoogleSheetsService.php).
--- Este arquivo fica aqui apenas como referência para uma FUTURA
--- migração do Google Sheets para MySQL (ver seção "Migração futura
--- para MySQL" do README.md). As tabelas abaixo refletem o modelo de
--- dados antigo (voluntário + contrato numa linha só); o modelo atual
--- no Google Sheets já separa "Voluntarios" e "Contratos" em abas
--- distintas, ligadas por "ID Voluntario".
+-- Referência da estrutura usada pelo services/MySQLService.php.
+-- NÃO é preciso rodar este script: o sistema cria o banco, as tabelas e
+-- as colunas faltantes sozinho no primeiro uso. Para copiar os dados da
+-- planilha do Google, use scripts/migrar_sheets_para_mysql.php.
+--
+-- Os campos são VARCHAR (texto) de propósito: guardam os valores
+-- exatamente como eram na planilha (datas 'AAAA-MM-DD', 'TRUE'/'FALSE'...).
 -- ---------------------------------------------------------------------
 
-CREATE DATABASE IF NOT EXISTS gestao_voluntarios
+CREATE DATABASE IF NOT EXISTS sistema_voluntarios
   CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-USE gestao_voluntarios;
+USE sistema_voluntarios;
 
--- ---------------------------------------------------------------------
--- Tabela: voluntarios
--- ---------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS voluntarios (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-
-    -- Dados pessoais
-    foto VARCHAR(255) NULL,
-    nome VARCHAR(200) NOT NULL,
-    cpf VARCHAR(14) NOT NULL,
-    rg VARCHAR(20) NULL,
-    rg_orgao_expedidor VARCHAR(30) NULL,
-    rg_data_expedicao DATE NULL,
-    data_nascimento DATE NOT NULL,
-    sexo ENUM('masculino','feminino','outro','nao_informar') NOT NULL,
-    escolaridade VARCHAR(60) NOT NULL,
-    estado_civil ENUM('solteiro','casado','divorciado','viuvo','uniao_estavel') NOT NULL,
-
-    -- Endereço
-    cep VARCHAR(9) NOT NULL,
-    logradouro VARCHAR(200) NOT NULL,
-    numero VARCHAR(20) NOT NULL,
-    complemento VARCHAR(100) NULL,
-    bairro VARCHAR(100) NOT NULL,
-    cidade VARCHAR(100) NOT NULL,
-    estado CHAR(2) NOT NULL,
-
-    -- Dados da prestação de serviço
-    carga_horaria ENUM('20','30','40') NOT NULL,
-    cargo VARCHAR(150) NOT NULL,
-    local_prestacao VARCHAR(200) NOT NULL,
-    data_inicio DATE NOT NULL,
-    data_termino DATE NOT NULL,
-    horario_inicio TIME NOT NULL,
-    horario_termino TIME NOT NULL,
-    dias_semana VARCHAR(100) NOT NULL, -- ex.: "SEG,TER,QUA,QUI,SEX" ou texto livre
-    secretaria VARCHAR(150) NOT NULL,
-    nome_secretario VARCHAR(200) NOT NULL,
-
-    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    atualizado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-    UNIQUE KEY uq_voluntarios_cpf (cpf)
+CREATE TABLE IF NOT EXISTS `cargos` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `nome` varchar(255) NOT NULL DEFAULT '',
+  `ativo` varchar(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ---------------------------------------------------------------------
--- Tabela: documentos_gerados
--- ---------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS documentos_gerados (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    id_voluntario INT NOT NULL,
-    tipo_documento VARCHAR(100) NOT NULL,      -- ex.: "Termo de Adesão (PDF)" / "Termo de Adesão (DOCX)"
-    nome_arquivo VARCHAR(255) NOT NULL,
-    caminho_arquivo VARCHAR(500),
-    versao INT NOT NULL DEFAULT 1,
-    usuario_responsavel VARCHAR(150) NOT NULL DEFAULT 'Administrador',
-    data_geracao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    FOREIGN KEY (id_voluntario)
-        REFERENCES voluntarios(id)
-        ON DELETE CASCADE
+CREATE TABLE IF NOT EXISTS `contratos` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `id_voluntario` varchar(255) NOT NULL DEFAULT '',
+  `carga_horaria` varchar(255) NOT NULL DEFAULT '',
+  `cargo` varchar(255) NOT NULL DEFAULT '',
+  `local_prestacao` varchar(255) NOT NULL DEFAULT '',
+  `data_inicio` varchar(255) NOT NULL DEFAULT '',
+  `data_termino` varchar(255) NOT NULL DEFAULT '',
+  `horario_inicio` varchar(255) NOT NULL DEFAULT '',
+  `horario_termino` varchar(255) NOT NULL DEFAULT '',
+  `dias_semana` varchar(255) NOT NULL DEFAULT '',
+  `secretaria` varchar(255) NOT NULL DEFAULT '',
+  `nome_secretario` varchar(255) NOT NULL DEFAULT '',
+  `status` varchar(255) NOT NULL DEFAULT '',
+  `data_cadastro` varchar(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  KEY `idx_id_voluntario` (`id_voluntario`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE INDEX idx_documentos_voluntario ON documentos_gerados(id_voluntario);
+CREATE TABLE IF NOT EXISTS `documentos` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `id_voluntario` varchar(255) NOT NULL DEFAULT '',
+  `tipo_documento` varchar(255) NOT NULL DEFAULT '',
+  `nome_arquivo` varchar(255) NOT NULL DEFAULT '',
+  `caminho_arquivo` varchar(255) NOT NULL DEFAULT '',
+  `versao` varchar(255) NOT NULL DEFAULT '',
+  `usuario_responsavel` varchar(255) NOT NULL DEFAULT '',
+  `data_geracao` varchar(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  KEY `idx_id_voluntario` (`id_voluntario`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS `locais` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `nome` varchar(255) NOT NULL DEFAULT '',
+  `endereco` varchar(255) NOT NULL DEFAULT '',
+  `ativo` varchar(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS `secretarias` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `nome` varchar(255) NOT NULL DEFAULT '',
+  `sigla` varchar(255) NOT NULL DEFAULT '',
+  `ativo` varchar(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS `secretarios` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `id_secretaria` varchar(255) NOT NULL DEFAULT '',
+  `nome` varchar(255) NOT NULL DEFAULT '',
+  `ativo` varchar(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  KEY `idx_id_secretaria` (`id_secretaria`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS `voluntarios` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `foto` varchar(255) NOT NULL DEFAULT '',
+  `nome` varchar(255) NOT NULL DEFAULT '',
+  `cpf` varchar(255) NOT NULL DEFAULT '',
+  `rg` varchar(255) NOT NULL DEFAULT '',
+  `orgao_expedidor` varchar(255) NOT NULL DEFAULT '',
+  `data_expedicao_rg` varchar(255) NOT NULL DEFAULT '',
+  `data_nascimento` varchar(255) NOT NULL DEFAULT '',
+  `idade` varchar(255) NOT NULL DEFAULT '',
+  `sexo` varchar(255) NOT NULL DEFAULT '',
+  `escolaridade` varchar(255) NOT NULL DEFAULT '',
+  `estado_civil` varchar(255) NOT NULL DEFAULT '',
+  `cep` varchar(255) NOT NULL DEFAULT '',
+  `logradouro` varchar(255) NOT NULL DEFAULT '',
+  `numero` varchar(255) NOT NULL DEFAULT '',
+  `complemento` varchar(255) NOT NULL DEFAULT '',
+  `bairro` varchar(255) NOT NULL DEFAULT '',
+  `cidade` varchar(255) NOT NULL DEFAULT '',
+  `estado` varchar(255) NOT NULL DEFAULT '',
+  `data_cadastro` varchar(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  KEY `idx_cpf` (`cpf`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

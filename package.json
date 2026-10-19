@@ -1,0 +1,9 @@
+{
+  "name": "sistema-voluntarios",
+  "private": true,
+  "description": "Sistema de Gestao de Voluntarios",
+  "scripts": {
+    "dev": "php -S 0.0.0.0:8001 router.php",
+    "start": "start-server.bat"
+  }
+}

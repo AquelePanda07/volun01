@@ -8,18 +8,19 @@ Voluntário (ANEXO V)** em PDF e DOCX a partir dos dados cadastrados.
 
 - **Front-end**: HTML5, CSS3 e JavaScript puro (`fetch` para consumir a API).
 - **Back-end**: PHP 8 (sem framework), com uma pequena camada de rotas em `api/`.
-- **Banco de dados**: **Google Sheets** (planilha usada como banco de dados
-  *temporário* — veja a seção [Google Sheets como banco de dados](#3-google-sheets-como-banco-de-dados)).
-  A arquitetura foi feita em camadas para permitir, no futuro, substituir o
-  Google Sheets por MySQL sem reconstruir a interface (veja
-  [Migração futura para MySQL](#4-migração-futura-para-mysql)).
+- **Banco de dados**: **MySQL/MariaDB do XAMPP** (veja [MySQL](#4-mysql-banco-de-dados-atual)).
+  O Google Sheets, usado antes como banco temporário, continua disponível como
+  alternativa (veja [Google Sheets](#3-google-sheets-banco-de-dados-anterior--alternativo)).
+- **Servidor**: Apache do XAMPP na porta 8001, acessível pela rede local
+  (veja [Servidor na rede local](#5-servidor-na-rede-local-xampp)).
 - **Geração de documentos**: [PhpOffice/PhpWord](https://github.com/PHPOffice/PHPWord)
   (DOCX, a partir de um modelo real) e [Dompdf](https://github.com/dompdf/dompdf) (PDF).
 
 ## Arquitetura em camadas
 
 ```
-Interface (HTML/JS)  →  API PHP (api/*.php)  →  Service (services/*.php)  →  GoogleSheetsService  →  Google Sheets
+Interface (HTML/JS)  →  API PHP (api/*.php)  →  Service (services/*.php)  →  MySQLService        →  MySQL
+                                                                        (ou GoogleSheetsService →  Google Sheets)
 ```
 
 - `api/*.php`: endpoints HTTP (rotas), só cuidam de request/response HTTP.
@@ -43,8 +44,10 @@ Interface (HTML/JS)  →  API PHP (api/*.php)  →  Service (services/*.php)  �
   Identifica registros pelo `ID`, autentica com uma Service Account, cria
   abas/colunas automaticamente se não existirem e mantém as leituras em
   cache durante cada requisição (para não estourar a cota da API).
+- `services/MySQLService.php`: a mesma interface sobre MySQL (cada entidade é
+  uma tabela; cria banco/tabelas/colunas faltantes automaticamente).
 - `repositorioDados()` em `bootstrap.php`: **único** ponto onde se escolhe o
-  armazenamento (hoje, `GoogleSheetsService`).
+  armazenamento, conforme o `driver` em `config/database.php`.
 
 Nenhuma credencial do Google fica no HTML, CSS ou JavaScript — tudo passa
 pelo PHP, que é o único lugar que lê o arquivo de credenciais.
@@ -58,10 +61,12 @@ index.html, voluntarios.html, cadastro.html, visualizar.html, gerar-termo.html
 api/                     Endpoints HTTP: voluntarios, contratos, documentos,
                          cargos, secretarias, locais, secretarios
 config/
-  google-sheets.php      Configuração centralizada (ID da planilha, abas, colunas)
-  credentials/           Chave da Service Account do Google (NÃO versionada)
+  database.php           Escolha do banco (mysql | google_sheets) e conexão com o MySQL
+  google-sheets.php      ID da planilha e definição das entidades/colunas (usada pelos dois bancos)
+  credentials/           Senha do MySQL (mysql.json) e chave do Google (NÃO versionadas)
 services/
-  RepositorioDados.php     Contrato da camada de dados (base para Google Sheets hoje, MySQL no futuro)
+  RepositorioDados.php     Contrato da camada de dados (base para MySQL e Google Sheets)
+  MySQLService.php         Acesso ao MySQL (banco atual)
   GoogleSheetsService.php  Comunicação de baixo nível com a Google Sheets API
   VoluntarioService.php    Regras de negócio da aba "Voluntarios"
   ContratoService.php      Regras de negócio da aba "Contratos"
@@ -76,17 +81,18 @@ templates/               Modelo DOCX (anexo_v_modelo.docx) e modelo HTML do PDF 
 uploads/voluntarios/     Fotos enviadas no cadastro (criado automaticamente)
 documentos/termos/       Termos de Adesão gerados em PDF/DOCX (criado automaticamente)
 logs/                    app.log com os erros ocorridos na API (criado automaticamente)
-sql/schema.sql           Script MySQL (referência para a futura migração — não usado hoje)
-scripts/                 Script utilitário para (re)gerar o modelo DOCX a partir do zero
+sql/schema.sql           Estrutura das tabelas MySQL (referência; o sistema cria sozinho)
+scripts/                 Migração Sheets -> MySQL e (re)geração do modelo DOCX
+router.php               Bloqueia arquivos internos quando se usa o servidor embutido do PHP
 js/, css/                Front-end (cadastro, listagem, visualização, geração do termo)
 ```
 
 ## 1. Requisitos
 
-- PHP 8.1+ com as extensões `curl`, `mbstring`, `zip`, `dom`, `xml`, `fileinfo`.
+- [XAMPP](https://www.apachefriends.org/) (Apache + PHP 8.1+ + MySQL/MariaDB).
+  O PHP precisa das extensões `curl`, `mbstring`, `zip`, `dom`, `xml`,
+  `fileinfo` e `pdo_mysql`.
 - [Composer](https://getcomposer.org/).
-- Uma conta Google com acesso para criar um projeto no Google Cloud e uma
-  planilha no Google Sheets.
 
 ## 2. Instalação
 
@@ -94,19 +100,20 @@ js/, css/                Front-end (cadastro, listagem, visualização, geraçã
 # 1) Instalar as dependências PHP
 composer install
 
-# 2) Configurar o acesso ao Google Sheets (veja a seção 3 abaixo)
+# 2) Ligar o MySQL e configurar o banco (veja a seção 4)
 
-# 3) Iniciar o sistema
-start-server.bat
+# 3) Configurar o Apache do XAMPP (veja a seção 5)
 ```
 
-Isso abre automaticamente `http://localhost:8000` no navegador. Se preferir
-iniciar manualmente: `php -S 127.0.0.1:8000` e acesse
-`http://127.0.0.1:8000/index.html`.
+Para testes rápidos sem o Apache: `npm run dev` (ou `start-server.bat`), que
+usa o servidor embutido do PHP com o `router.php`. Não use junto com o
+Apache: os dois ocupam a porta 8001.
 
-## 3. Google Sheets como banco de dados
+## 3. Google Sheets (banco de dados anterior / alternativo)
 
-O Google Sheets é usado como banco de dados **temporário** do sistema. A
+Antes do MySQL, o Google Sheets era o banco de dados **temporário** do
+sistema. Para voltar a usá-lo, troque `driver` para `google_sheets` em
+`config/database.php` (ou defina a variável de ambiente `DB_DRIVER`). A
 planilha utilizada é:
 
 <https://docs.google.com/spreadsheets/d/1pTZ9okHYFLq66Wqc6nLr0r8jE9XdTiF3j2kwY-laTg4/edit>
@@ -195,27 +202,87 @@ Account.
   Outros locais podem ser informados pela opção "Outro (especificar)" do
   formulário, ou acrescentados direto na aba `Locais` da planilha.
 
-## 4. Migração futura para MySQL
+## 4. MySQL (banco de dados atual)
 
-O sistema foi organizado para que, no futuro, o Google Sheets possa ser
-substituído por MySQL **sem reconstruir a interface**:
+O sistema usa o MySQL/MariaDB do XAMPP, no banco `sistema_voluntarios`
+(o banco antigo `gestao_voluntarios`, de uma versão anterior, não é usado).
 
-1. Criar `services/MySQLService.php` com `class MySQLService extends RepositorioDados`,
-   implementando os 5 métodos abstratos (`listar`, `buscarPorId`, `inserir`,
-   `atualizar`, `excluir`). Cada "entidade" (`voluntarios`, `contratos`,
-   `cargos`…) vira uma tabela, e os registros usam os mesmos nomes de campo
-   do cabeçalho da planilha (ex.: `SELECT nome AS \`Nome\``). Os métodos
-   nomeados (`getVoluntarios()` etc.) já vêm prontos da classe base.
-2. Trocar `new GoogleSheetsService()` por `new MySQLService()` em
-   `repositorioDados()` (`bootstrap.php`).
+- **Conexão**: `config/database.php` (host, porta, nome do banco). Usuário e
+  senha ficam em `config/credentials/mysql.json` (fora do git):
+  `{"usuario": "voluntarios_app", "senha": "..."}`.
+- **Estrutura**: cada entidade é uma tabela (`voluntarios`, `contratos`,
+  `cargos`, `secretarias`, `locais`, `secretarios`, `documentos`) e cada
+  coluna do cabeçalho vira uma coluna snake_case (`ID Voluntario` →
+  `id_voluntario`). Banco, tabelas e colunas faltantes são criados
+  automaticamente no primeiro uso; `sql/schema.sql` é só referência.
+- **Valores como texto**: os campos são `VARCHAR` e guardam os valores
+  exatamente como na planilha (datas `AAAA-MM-DD`, `TRUE`/`FALSE`), para que
+  as regras de negócio funcionem igual nos dois bancos.
+- **Segurança**: o MySQL aceita conexões só deste PC (`bind-address="127.0.0.1"`
+  em `C:\xampp\mysql\bin\my.ini`) e o sistema usa um usuário próprio, com
+  acesso apenas ao banco `sistema_voluntarios`.
 
-Nenhum service de domínio, rota (`api/*.php`) ou página do front-end
-precisa mudar.
+### Configurando do zero (outro computador)
 
-O arquivo `sql/schema.sql` foi mantido no repositório como referência para
-essa futura migração (ele não é usado pelo sistema atualmente).
+1. Ligue o MySQL pelo XAMPP Control Panel (ou como serviço, seção 5).
+2. Crie o usuário do sistema (no phpMyAdmin → aba SQL, ou no Shell do XAMPP
+   com `mysql -u root`), trocando `SENHA_FORTE`:
+   ```sql
+   CREATE USER 'voluntarios_app'@'localhost' IDENTIFIED BY 'SENHA_FORTE';
+   GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX
+     ON sistema_voluntarios.* TO 'voluntarios_app'@'localhost';
+   CREATE USER 'voluntarios_app'@'127.0.0.1' IDENTIFIED BY 'SENHA_FORTE';
+   GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX
+     ON sistema_voluntarios.* TO 'voluntarios_app'@'127.0.0.1';
+   ```
+3. Crie `config/credentials/mysql.json` com esse usuário e senha.
+4. (Opcional) Copie os dados da planilha do Google, mantendo os mesmos IDs:
+   ```powershell
+   php scripts/migrar_sheets_para_mysql.php
+   ```
+   O script só grava se as tabelas estiverem vazias (use `--substituir` para
+   apagar e copiar de novo), faz tudo numa transação e confere campo a campo
+   no final. A planilha não é alterada.
 
-## 5. Sobre o modelo do Termo de Adesão
+### Backup
+
+```powershell
+C:\xampp\mysql\bin\mysqldump.exe -u root sistema_voluntarios > backup_voluntarios.sql
+```
+
+Guarde também as pastas `uploads/` (fotos) e `documentos/` (termos gerados).
+Para restaurar: `C:\xampp\mysql\bin\mysql.exe -u root sistema_voluntarios < backup_voluntarios.sql`.
+
+### Planilha
+
+O botão **Baixar Planilha** do painel gera um CSV (abre no Excel) com os
+voluntários e o contrato mais recente de cada um (`api/planilha.php`).
+
+## 5. Servidor na rede local (XAMPP)
+
+O Apache do XAMPP serve o sistema na porta **8001** (bloco "Sistema de Gestao
+de Voluntarios" em `C:\xampp\apache\conf\extra\httpd-vhosts.conf`). Esse
+bloco só libera páginas, `css/`, `js/`, `img/`, fotos e `api/*.php`: chave do
+Google, senha do MySQL, logs e código respondem 404.
+
+Para ligar Apache e MySQL automaticamente com o Windows (PowerShell **como
+Administrador**, uma vez só):
+
+```powershell
+C:\xampp\apache\bin\httpd.exe -k install -n Apache2.4
+C:\xampp\mysql\bin\mysqld.exe --install mysql --defaults-file=C:\xampp\mysql\bin\my.ini
+sc.exe config Apache2.4 start= auto
+sc.exe config mysql start= auto
+net start mysql
+net start Apache2.4
+New-NetFirewallRule -DisplayName "Sistema Voluntarios 8001" -Direction Inbound -Protocol TCP -LocalPort 8001 -Action Allow -Profile Any
+```
+
+Acesse em `http://localhost:8001` neste PC e em `http://<IP deste PC>:8001`
+nos demais (o IP aparece em `ipconfig`). O sistema **não tem login**: não o
+exponha à internet.
+
+## 6. Sobre o modelo do Termo de Adesão
 
 O modelo **ANEXO V** fornecido pela Prefeitura foi transcrito literalmente em
 dois formatos, mantendo cabeçalho, numeração, texto das 9 cláusulas e campos de
@@ -259,7 +326,7 @@ preenchidos automaticamente.
   com nomes iguais nem sobrescrever versões antigas do histórico de
   documentos.
 
-## 6. Fluxo do sistema
+## 7. Fluxo do sistema
 
 ```
 Adicionar Voluntário → Preencher dados → Salvar (Google Sheets)
@@ -268,7 +335,7 @@ Adicionar Voluntário → Preencher dados → Salvar (Google Sheets)
         → Registro na aba "Documentos" → Histórico de Documentos
 ```
 
-## 7. Regras de validação aplicadas (front-end e back-end)
+## 8. Regras de validação aplicadas (front-end e back-end)
 
 - Todos os campos marcados como obrigatórios são exigidos antes de salvar.
 - CPF deve ser válido e único.
@@ -281,7 +348,7 @@ Adicionar Voluntário → Preencher dados → Salvar (Google Sheets)
 - Cada geração (PDF ou DOCX) cria uma nova versão no histórico
   (aba `Documentos`), preservando os arquivos anteriores em disco.
 
-## 8. Solução de problemas
+## 9. Solução de problemas
 
 - **"PHP não foi encontrado"** ao rodar `start-server.bat`: instale o PHP e
   adicione-o ao PATH do Windows (a janela fica aberta para você ler a

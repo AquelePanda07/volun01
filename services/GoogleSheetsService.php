@@ -61,6 +61,16 @@ class GoogleSheetsService extends RepositorioDados
      */
     private static array $linhasPorAba = [];
 
+    /**
+     * O token e a estrutura das abas também são guardados em disco (pasta
+     * cache/), para não repetir login + leitura de metadados/cabeçalho a
+     * cada requisição — sem isso, cada chamada à API fazia 4 viagens ao
+     * Google. A estrutura expira em poucos minutos, para acompanhar
+     * colunas acrescentadas manualmente na planilha.
+     */
+    private const DIR_CACHE = __DIR__ . '/../cache';
+    private const VALIDADE_ESTRUTURA = 300;
+
     public function __construct()
     {
         $config = require __DIR__ . '/../config/google-sheets.php';
@@ -278,6 +288,10 @@ class GoogleSheetsService extends RepositorioDados
         if (isset(self::$estruturaPorAba[$chave])) {
             return self::$estruturaPorAba[$chave];
         }
+        $emDisco = $this->lerCacheDisco('estrutura_' . $chave);
+        if ($emDisco !== null && ($emDisco['expiraEm'] ?? 0) > time()) {
+            return self::$estruturaPorAba[$chave] = $emDisco['estrutura'];
+        }
 
         $sheetId = $this->localizarOuCriarAba($aba);
 
@@ -308,11 +322,16 @@ class GoogleSheetsService extends RepositorioDados
             ], ['valueInputOption' => 'RAW']);
         }
 
-        return self::$estruturaPorAba[$chave] = [
+        self::$estruturaPorAba[$chave] = [
             'sheetId' => $sheetId,
             'indices' => $indices,
             'total' => count($cabecalho),
         ];
+        $this->gravarCacheDisco('estrutura_' . $chave, [
+            'expiraEm' => time() + self::VALIDADE_ESTRUTURA,
+            'estrutura' => self::$estruturaPorAba[$chave],
+        ]);
+        return self::$estruturaPorAba[$chave];
     }
 
     private function localizarOuCriarAba(string $aba): int
@@ -360,6 +379,11 @@ class GoogleSheetsService extends RepositorioDados
     {
         if (self::$tokenCache !== null && time() < self::$tokenExpiraEm) {
             return self::$tokenCache;
+        }
+        $emDisco = $this->lerCacheDisco('token_' . $this->credentialsPath);
+        if ($emDisco !== null && time() < (int) ($emDisco['expiraEm'] ?? 0)) {
+            self::$tokenExpiraEm = (int) $emDisco['expiraEm'];
+            return self::$tokenCache = (string) $emDisco['token'];
         }
 
         if (!is_file($this->credentialsPath)) {
@@ -411,6 +435,10 @@ class GoogleSheetsService extends RepositorioDados
 
         self::$tokenCache = $json['access_token'];
         self::$tokenExpiraEm = $agora + (int) ($json['expires_in'] ?? 3600) - 30;
+        $this->gravarCacheDisco('token_' . $this->credentialsPath, [
+            'token' => self::$tokenCache,
+            'expiraEm' => self::$tokenExpiraEm,
+        ]);
 
         return self::$tokenCache;
     }
@@ -457,6 +485,33 @@ class GoogleSheetsService extends RepositorioDados
         }
 
         return is_array($json) ? $json : [];
+    }
+
+    // ------------------------------------------------------------------
+    // Cache em disco (entre requisições)
+    // ------------------------------------------------------------------
+
+    private function arquivoCache(string $chave): string
+    {
+        return self::DIR_CACHE . '/sheets_' . md5($chave) . '.json';
+    }
+
+    private function lerCacheDisco(string $chave): ?array
+    {
+        $arquivo = $this->arquivoCache($chave);
+        if (!is_file($arquivo)) {
+            return null;
+        }
+        $dados = json_decode((string) @file_get_contents($arquivo), true);
+        return is_array($dados) ? $dados : null;
+    }
+
+    private function gravarCacheDisco(string $chave, array $dados): void
+    {
+        if (!is_dir(self::DIR_CACHE) && !@mkdir(self::DIR_CACHE, 0775, true)) {
+            return; // sem cache em disco o sistema só fica mais lento, não quebra
+        }
+        @file_put_contents($this->arquivoCache($chave), json_encode($dados), LOCK_EX);
     }
 
     // ------------------------------------------------------------------

@@ -9,3 +9,4 @@
 !/logs/.gitkeep
 composer.phar
 *.log
+/cache/

@@ -51,15 +51,21 @@ if not exist "uploads\voluntarios" mkdir "uploads\voluntarios" >nul 2>nul
 if not exist "documentos\termos" mkdir "documentos\termos" >nul 2>nul
 if not exist "logs" mkdir "logs" >nul 2>nul
 
-set HOST=127.0.0.1
+REM 0.0.0.0 = aceita conexoes de outros computadores da rede local.
+set HOST=0.0.0.0
 set PORT=8001
 set URL=http://localhost:%PORT%
 
 echo Iniciando o servidor PHP embutido em %URL% ...
 echo O servidor vai rodar em uma nova janela: feche-a para encerrar o sistema.
 echo.
+echo Para acessar de OUTRO computador da mesma rede, use:
+for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /c:"IPv4"') do (
+    for /f "tokens=*" %%b in ("%%a") do echo     http://%%b:%PORT%/index.html
+)
+echo.
 
-start "Sistema de Gestao de Voluntarios - Servidor PHP (%URL%)" cmd /k php -S %HOST%:%PORT%
+start "Sistema de Gestao de Voluntarios - Servidor PHP (%URL%)" cmd /k php -S %HOST%:%PORT% router.php
 
 REM Aguarda o servidor subir antes de abrir o navegador.
 timeout /t 2 /nobreak >nul

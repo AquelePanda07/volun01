@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('filtro-status').addEventListener('change', renderizarLista);
   document.getElementById('filtro-secretaria').addEventListener('change', renderizarLista);
   document.getElementById('filtro-carga').addEventListener('change', renderizarLista);
+  document.getElementById('filtro-ordem').addEventListener('change', renderizarLista);
   document.getElementById('selecionar-todos').addEventListener('change', (e) => {
     filtrarVoluntarios().forEach(v => e.target.checked ? SELECIONADOS.add(String(v.id)) : SELECIONADOS.delete(String(v.id)));
     renderizarLista();
@@ -68,7 +69,42 @@ function filtrarVoluntarios() {
     if (carga && String(v.cargaHoraria) !== String(carga)) return false;
 
     return true;
-  }).sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+  }).sort(compararVoluntarios(document.getElementById('filtro-ordem').value));
+}
+
+/**
+ * Comparador conforme o "Ordenar por". Desempata sempre pelo nome.
+ * Em "Dias para o término", contratos encerrados (ou sem data) ficam
+ * sempre no fim da lista, em qualquer direção.
+ */
+function compararVoluntarios(ordem) {
+  const texto = (a, b) => (a || '').localeCompare(b || '', 'pt-BR', { sensitivity: 'base' });
+  const porNome = (a, b) => texto(a.nome, b.nome);
+  const vazioPorUltimo = (a, b, campo) => (!a[campo] - !b[campo]) || texto(a[campo], b[campo]);
+
+  switch (ordem) {
+    case 'nome-desc':
+      return (a, b) => porNome(b, a);
+    case 'cargo':
+      return (a, b) => vazioPorUltimo(a, b, 'cargo') || porNome(a, b);
+    case 'local':
+      return (a, b) => vazioPorUltimo(a, b, 'localPrestacao') || porNome(a, b);
+    case 'dias':
+    case 'dias-desc': {
+      const sentido = ordem === 'dias' ? 1 : -1;
+      const dias = v => calcularStatusContrato(v.dataInicio, v.dataTermino) === 'ENCERRADO'
+        ? null
+        : calcularDiasRestantes(v.dataTermino);
+      return (a, b) => {
+        const da = dias(a);
+        const db = dias(b);
+        if (da === null || db === null) return (da === null) - (db === null) || porNome(a, b);
+        return (da - db) * sentido || porNome(a, b);
+      };
+    }
+    default:
+      return porNome;
+  }
 }
 
 function renderizarLista() {
@@ -108,7 +144,10 @@ function renderizarLista() {
       <td>
         <div class="pessoa-cel">
           <img class="avatar-mini" src="${foto}" alt="Foto de ${escapeHtml(v.nome)}">
-          <strong>${escapeHtml(v.nome)}</strong>
+          <div class="pessoa-cel__info">
+            <strong>${escapeHtml(v.nome)}</strong>
+            <span>${escapeHtml(v.cargo || '-')}</span>
+          </div>
         </div>
       </td>
       <td>${escapeHtml(v.localPrestacao || '-')}</td>
@@ -136,7 +175,7 @@ function renderizarLista() {
         <img class="avatar-mini" src="${foto}" alt="Foto de ${escapeHtml(v.nome)}">
         <div class="voluntario-card__info">
           <strong>${escapeHtml(v.nome)}</strong>
-          <span>${escapeHtml(v.localPrestacao || '-')}</span>
+          <span>${escapeHtml(v.cargo || '-')} · ${escapeHtml(v.localPrestacao || '-')}</span>
         </div>
         <span class="badge ${badgeClasse}">${icon(STATUS_ICON[status])}${STATUS_LABEL[status]}</span>
       </div>
