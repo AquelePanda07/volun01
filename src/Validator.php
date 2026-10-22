@@ -30,7 +30,6 @@ class Validator
         'dataTermino' => 'Data de término',
         'horarioInicio' => 'Horário de início',
         'horarioTermino' => 'Horário de término',
-        'diasSemana' => 'Dias da semana',
         'secretaria' => 'Secretaria',
         'nomeSecretario' => 'Nome do Secretário',
     ];
@@ -39,7 +38,11 @@ class Validator
      * Valida os dados de um voluntário.
      * @return string[] Lista de mensagens de erro (vazia quando válido).
      */
-    public static function validarVoluntario(array $dados): array
+    /**
+     * @param int $mesesMaximos duração máxima do contrato (6 meses; 12 para
+     *                          contrato renovado, que já foi prorrogado uma vez).
+     */
+    public static function validarVoluntario(array $dados, int $mesesMaximos = 6): array
     {
         $erros = [];
 
@@ -60,6 +63,10 @@ class Validator
             $erros[] = 'Informe um CPF válido.';
         }
 
+        if (!empty($dados['contato']) && !in_array(strlen((string) preg_replace('/\D/', '', (string) $dados['contato'])), [10, 11], true)) {
+            $erros[] = 'Informe um contato válido, com DDD.';
+        }
+
         if (!empty($dados['cep']) && preg_replace('/\D/', '', (string) $dados['cep']) === '') {
             $erros[] = 'Informe um CEP válido.';
         } elseif (!empty($dados['cep']) && strlen(preg_replace('/\D/', '', (string) $dados['cep'])) !== 8) {
@@ -69,8 +76,8 @@ class Validator
         if (!empty($dados['dataInicio']) && !empty($dados['dataTermino'])) {
             if ($dados['dataTermino'] < $dados['dataInicio']) {
                 $erros[] = 'A data de término deve ser posterior à data de início.';
-            } elseif (self::diferencaEmMeses($dados['dataInicio'], $dados['dataTermino']) > 6) {
-                $erros[] = 'O período do contrato não pode ultrapassar 6 meses.';
+            } elseif (self::diferencaEmMeses($dados['dataInicio'], $dados['dataTermino']) > $mesesMaximos) {
+                $erros[] = "O período do contrato não pode ultrapassar {$mesesMaximos} meses.";
             }
         }
 

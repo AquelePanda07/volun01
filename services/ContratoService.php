@@ -33,11 +33,22 @@ class ContratoService
         'nomeSecretario' => 'Nome Secretario',
     ];
 
+    /** A partir de quantos dias antes do término a renovação fica disponível. */
+    public const JANELA_RENOVACAO_DIAS = 60;
+
     private RepositorioDados $dados;
 
     public function __construct(?RepositorioDados $dados = null)
     {
         $this->dados = $dados ?? repositorioDados();
+    }
+
+    /** @return array<int, array<string, mixed>> todos os contratos, mais recente primeiro. */
+    public function listarTodos(): array
+    {
+        $linhas = array_map([$this, 'paraCamelCase'], $this->dados->getContratos());
+        usort($linhas, fn (array $a, array $b) => $b['id'] <=> $a['id']);
+        return $linhas;
     }
 
     /** @return array<int, array<string, mixed>> histórico de contratos do voluntário, mais recente primeiro. */
@@ -52,14 +63,6 @@ class ContratoService
     public function buscarAtualPorVoluntario(int $idVoluntario): ?array
     {
         return $this->listarPorVoluntario($idVoluntario)[0] ?? null;
-    }
-
-    /** @return array<int, array<string, mixed>> todos os contratos de todos os voluntários (uso administrativo/relatórios). */
-    public function listarTodos(): array
-    {
-        $linhas = array_map([$this, 'paraCamelCase'], $this->dados->getContratos());
-        usort($linhas, fn (array $a, array $b) => $b['id'] <=> $a['id']);
-        return $linhas;
     }
 
     public function criar(int $idVoluntario, array $dados): array
@@ -91,6 +94,69 @@ class ContratoService
 
         $this->dados->updateContrato((int) $atual['ID'], $linha);
         return $this->paraCamelCase($linha);
+    }
+
+    /**
+     * Marca o contrato vigente como renovado, prorrogando a data de término.
+     * O término original fica guardado em "Termino Anterior". Só é permitido
+     * uma vez por contrato, a partir de JANELA_RENOVACAO_DIAS dias antes do fim
+     * (ou depois de encerrado), e a prorrogação vai até 6 meses além do término.
+     *
+     * @return string[] erros de validação (vazio = renovado com sucesso).
+     */
+    public function renovar(int $idVoluntario, string $novaDataTermino): array
+    {
+        $atual = $this->buscarLinhaAtual($idVoluntario);
+        $erros = $this->validarRenovacao($atual, $novaDataTermino);
+        if (!empty($erros)) {
+            return $erros;
+        }
+
+        $this->dados->updateContrato((int) $atual['ID'], [
+            'Data Termino' => $novaDataTermino,
+            'Renovado' => 'TRUE',
+            'Data Renovacao' => date('Y-m-d'),
+            'Termino Anterior' => (string) $atual['Data Termino'],
+            'Status' => self::calcularStatus((string) ($atual['Data Inicio'] ?? ''), $novaDataTermino),
+        ]);
+        return [];
+    }
+
+    /** @return string[] */
+    private function validarRenovacao(?array $atual, string $novaDataTermino): array
+    {
+        if ($atual === null) {
+            return ['Este voluntário não possui contrato para renovar.'];
+        }
+        if (self::estaRenovado($atual)) {
+            return ['Este contrato já foi renovado.'];
+        }
+
+        $terminoAtual = (string) ($atual['Data Termino'] ?? '');
+        $status = self::calcularStatus((string) ($atual['Data Inicio'] ?? ''), $terminoAtual);
+        $diasRestantes = $terminoAtual !== ''
+            ? (int) (new DateTime('today'))->diff(new DateTime($terminoAtual))->format('%r%a')
+            : null;
+        if ($status === 'A_INICIAR' || $diasRestantes === null || $diasRestantes > self::JANELA_RENOVACAO_DIAS) {
+            return ['A renovação só fica disponível nos últimos ' . self::JANELA_RENOVACAO_DIAS . ' dias do contrato.'];
+        }
+
+        $data = DateTime::createFromFormat('!Y-m-d', $novaDataTermino);
+        if ($data === false || $data->format('Y-m-d') !== $novaDataTermino) {
+            return ['Informe uma nova data de término válida.'];
+        }
+        if ($novaDataTermino <= $terminoAtual || $novaDataTermino < date('Y-m-d')) {
+            return ['A nova data de término deve ser posterior ao término atual e a hoje.'];
+        }
+        if (Validator::diferencaEmMeses($terminoAtual, $novaDataTermino) > 6) {
+            return ['A renovação não pode prorrogar o contrato por mais de 6 meses.'];
+        }
+        return [];
+    }
+
+    private static function estaRenovado(array $linha): bool
+    {
+        return strtoupper(trim((string) ($linha['Renovado'] ?? ''))) === 'TRUE';
     }
 
     /** Remove todos os contratos vinculados a um voluntário (usado ao excluir o voluntário). */
@@ -154,6 +220,9 @@ class ContratoService
         // Sempre recalculado: a coluna "Status" da planilha fica desatualizada com o passar dos dias.
         $resultado['status'] = self::calcularStatus((string) $resultado['dataInicio'], (string) $resultado['dataTermino']);
         $resultado['dataCadastro'] = $linha['Data Cadastro'] ?? '';
+        $resultado['renovado'] = self::estaRenovado($linha);
+        $resultado['dataRenovacao'] = $linha['Data Renovacao'] ?? '';
+        $resultado['terminoAnterior'] = $linha['Termino Anterior'] ?? '';
         return $resultado;
     }
 }

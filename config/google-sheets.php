@@ -55,11 +55,14 @@ return [
             'Data Nascimento', 'Idade', 'Sexo', 'Escolaridade', 'Estado Civil',
             'CEP', 'Logradouro', 'Numero', 'Complemento', 'Bairro', 'Cidade', 'Estado',
             'Data Cadastro',
+            'Contato',
         ],
         'Contratos' => [
             'ID', 'ID Voluntario', 'Carga Horaria', 'Cargo', 'Local Prestacao',
             'Data Inicio', 'Data Termino', 'Horario Inicio', 'Horario Termino',
             'Dias Semana', 'Secretaria', 'Nome Secretario', 'Status', 'Data Cadastro',
+            // Renovação do contrato (ver ContratoService::renovar()).
+            'Renovado', 'Data Renovacao', 'Termino Anterior',
         ],
         'Cargos' => ['ID', 'Nome', 'Ativo'],
         'Secretarias' => ['ID', 'Nome', 'Sigla', 'Ativo'],

@@ -56,9 +56,10 @@ pelo PHP, que é o único lugar que lê o arquivo de credenciais.
 
 ```
 start-server.bat        Inicia o sistema (PHP embutido + navegador) com duplo clique
-index.html, voluntarios.html, cadastro.html, visualizar.html, gerar-termo.html
+index.html, voluntarios.html, por-cargo.html, cadastro.html, visualizar.html,
+gerar-termo.html
                          Páginas do front-end (HTML + JS puro)
-api/                     Endpoints HTTP: voluntarios, contratos, documentos,
+api/                     Endpoints HTTP: voluntarios, documentos, planilha,
                          cargos, secretarias, locais, secretarios
 config/
   database.php           Escolha do banco (mysql | google_sheets) e conexão com o MySQL
@@ -84,7 +85,10 @@ logs/                    app.log com os erros ocorridos na API (criado automatic
 sql/schema.sql           Estrutura das tabelas MySQL (referência; o sistema cria sozinho)
 scripts/                 Migração Sheets -> MySQL e (re)geração do modelo DOCX
 router.php               Bloqueia arquivos internos quando se usa o servidor embutido do PHP
-js/, css/                Front-end (cadastro, listagem, visualização, geração do termo)
+js/app.js                Núcleo do front-end: monta o menu lateral/topo de todas as
+                         páginas, cliente da API, ícones, modais, toasts e tema
+js/*.js, css/style.css   Script de cada página (painel, voluntarios, por-cargo, cadastro,
+                         visualizar, gerar-termo) e o estilo único do sistema
 ```
 
 ## 1. Requisitos
@@ -305,7 +309,8 @@ Nome, CPF, RG, órgão expedidor, data de expedição, idade (calculada a partir
 data de nascimento), estado civil, sexo, escolaridade, endereço, secretaria,
 nome do secretário, cargo/local de prestação, datas e horários, dias da semana,
 data de emissão e número/ano do Termo. Os campos de **assinatura** nunca são
-preenchidos automaticamente.
+preenchidos automaticamente. Os dias da semana são opcionais: sem eles, o Termo
+sai com uma linha em branco (`____`) no lugar, para preenchimento à mão.
 
 ### Decisões de implementação (não especificadas no modelo original)
 
@@ -329,10 +334,10 @@ preenchidos automaticamente.
 ## 7. Fluxo do sistema
 
 ```
-Adicionar Voluntário → Preencher dados → Salvar (Google Sheets)
+Adicionar Voluntário → Preencher dados → Salvar (MySQL)
         → Visualizar voluntário → "Gerar Termo de Adesão"
         → Pré-visualização (HTML) → Gerar PDF / DOCX
-        → Registro na aba "Documentos" → Histórico de Documentos
+        → Registro em "Documentos" → Histórico de Documentos
 ```
 
 ## 8. Regras de validação aplicadas (front-end e back-end)

@@ -10,11 +10,13 @@ const DIAS_SEMANA_NOMES = {
   SEX: 'Sexta-feira', SAB: 'Sábado', DOM: 'Domingo',
 };
 
+const SEXO_LABEL = { masculino: 'Masculino', feminino: 'Feminino', outro: 'Outro', nao_informar: 'Prefiro não informar' };
+const ESTADO_CIVIL_LABEL = { solteiro: 'Solteiro(a)', casado: 'Casado(a)', divorciado: 'Divorciado(a)', viuvo: 'Viúvo(a)', uniao_estavel: 'União estável' };
+
 let VOLUNTARIO_ATUAL = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const params = new URLSearchParams(location.search);
-  const id = params.get('id');
+  const id = new URLSearchParams(location.search).get('id');
   const voluntario = id ? await buscarVoluntario(id) : null;
 
   if (!voluntario) {
@@ -23,7 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   VOLUNTARIO_ATUAL = voluntario;
-  document.getElementById('titulo-pagina').textContent = `${voluntario.nome} — Sistema de Gestão de Voluntários`;
+  document.title = `${voluntario.nome} — Sistema de Gestão de Voluntários`;
   renderizarVoluntario(voluntario);
   carregarHistoricoDocumentos(voluntario.id);
 });
@@ -31,7 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 function renderizarNaoEncontrado() {
   document.getElementById('area-dados').innerHTML = `
     <div class="estado-vazio">
-      <span class="icon">${ICONS.alert}</span>
+      ${icon('alert')}
       <p>Voluntário não encontrado. Ele pode ter sido excluído.</p>
       <a class="btn" href="voluntarios.html">Voltar à lista</a>
     </div>
@@ -43,75 +45,119 @@ function formatarDiasSemanaExibicao(diasSemanaCsv) {
   return diasSemanaCsv.split(',').map(c => DIAS_SEMANA_NOMES[c.trim()] || c.trim()).join(', ');
 }
 
+function item(rotulo, valor, classe = '') {
+  return `<div class="detalhe-item ${classe}"><b>${rotulo}</b><span>${valor}</span></div>`;
+}
+
+/** Telefone com link para ligar e para abrir no WhatsApp (DDI 55). */
+function htmlContato(contato) {
+  const digitos = (contato || '').replace(/\D/g, '');
+  if (!digitos) return '-';
+  return `<a href="tel:+55${digitos}">${escapeHtml(contato)}</a> · <a href="https://wa.me/55${digitos}" target="_blank" rel="noopener">WhatsApp</a>`;
+}
+
+/** Barra com o quanto do contrato já foi cumprido. */
+function htmlProgressoContrato(v, status) {
+  const progresso = calcularProgressoContrato(v.dataInicio, v.dataTermino);
+  if (progresso === null) return '';
+  const dias = calcularDiasRestantes(v.dataTermino);
+  const descricao = status === 'A_INICIAR'
+    ? `Começa em ${formatarDataBR(v.dataInicio)}`
+    : (status === 'ENCERRADO' ? 'Contrato encerrado' : `${formatarDiasRestantes(dias, status)} para o término`);
+  const classeBarra = status === 'ENCERRADO' ? 'progresso__barra--perigo' : (dias !== null && dias <= 30 ? 'progresso__barra--alerta' : '');
+
+  return `
+    <div class="progresso-contrato">
+      <div class="progresso-contrato__topo">
+        <span>${formatarDataBR(v.dataInicio)} → ${formatarDataBR(v.dataTermino)}</span>
+        <span><b>${progresso}%</b> concluído · ${escapeHtml(descricao)}</span>
+      </div>
+      <div class="progresso" role="progressbar" aria-valuenow="${progresso}" aria-valuemin="0" aria-valuemax="100">
+        <div class="progresso__barra ${classeBarra}" data-largura="${progresso}"></div>
+      </div>
+    </div>
+  `;
+}
+
 function renderizarVoluntario(v) {
   const status = calcularStatusContrato(v.dataInicio, v.dataTermino);
-  const badgeClasse = status === 'ATIVO' ? 'badge--sucesso' : (status === 'ENCERRADO' ? 'badge--perigo' : 'badge--alerta');
-  const foto = v.foto || `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="120" height="120" fill="#cfe3f8"/><text x="50%" y="55%" font-family="Arial" font-size="48" fill="#1c64b0" text-anchor="middle" dominant-baseline="middle">${(v.nome||'?').charAt(0).toUpperCase()}</text></svg>`)}`;
-
-  const sexoLabel = { masculino: 'Masculino', feminino: 'Feminino', outro: 'Outro', nao_informar: 'Prefiro não informar' }[v.sexo] || v.sexo || '-';
-  const estadoCivilLabel = { solteiro: 'Solteiro(a)', casado: 'Casado(a)', divorciado: 'Divorciado(a)', viuvo: 'Viúvo(a)', uniao_estavel: 'União estável' }[v.estadoCivil] || v.estadoCivil || '-';
+  const id = encodeURIComponent(v.id);
 
   const endereco = [
     v.logradouro, v.numero ? `nº ${v.numero}` : '', v.complemento || '',
   ].filter(Boolean).join(', ') + (v.bairro ? ` - ${v.bairro}` : '') + (v.cidade ? `, ${v.cidade}` : '') + (v.estado ? `/${v.estado}` : '') + (v.cep ? ` — CEP ${v.cep}` : '');
 
+  const idade = calcularIdade(v.dataNascimento);
+
   document.getElementById('area-dados').innerHTML = `
     <div class="perfil-topo">
-      <img class="perfil-topo__foto${v.foto ? ' perfil-topo__foto--clicavel' : ''}" id="foto-perfil" src="${foto}" alt="Foto de ${escapeHtml(v.nome)}"${v.foto ? ' title="Clique para ver a foto completa"' : ''}>
-      <div class="perfil-topo__info">
-        <h1>${escapeHtml(v.nome)}</h1>
-        <div class="perfil-topo__meta">
-          <span class="badge ${badgeClasse}">${icon(STATUS_ICON[status])}${STATUS_LABEL[status]}</span>
-          <span>${icon('briefcase')} ${escapeHtml(v.cargo || '-')}</span>
-          <span>${icon('eye')} ${escapeHtml(v.localPrestacao || '-')}</span>
+      <div class="perfil-topo__capa"></div>
+      <div class="perfil-topo__corpo">
+        <img class="perfil-topo__foto${v.foto ? ' perfil-topo__foto--clicavel' : ''}" id="foto-perfil" src="${fotoOuAvatar(v)}" alt="Foto de ${escapeHtml(v.nome)}"${v.foto ? ' title="Clique para ver a foto completa"' : ''}>
+        <div class="perfil-topo__info">
+          <h1>${escapeHtml(v.nome)}</h1>
+          <div class="perfil-topo__meta">
+            ${badgeStatus(status)}${badgeRenovado(v)}
+            <span>${icon('briefcase')} ${escapeHtml(v.cargo || '-')}</span>
+            <span>${icon('mapPin')} ${escapeHtml(v.localPrestacao || '-')}</span>
+          </div>
+        </div>
+        <div class="perfil-topo__acoes">
+          ${podeRenovarContrato(v) ? `<button class="btn btn--outline btn--renovar" id="btn-renovar">${icon('repeat')} Marcar como renovado</button>` : ''}
+          <a class="btn" href="gerar-termo.html?id=${id}">${icon('file')} Gerar Termo</a>
+          <a class="btn btn--outline" href="cadastro.html?id=${id}">${icon('edit')} Editar</a>
+          <button class="btn btn--danger-suave" id="btn-excluir">${icon('trash')} Excluir</button>
         </div>
       </div>
-      <div class="perfil-topo__acoes">
-        <a class="btn" href="gerar-termo.html?id=${encodeURIComponent(v.id)}">${icon('briefcase')} Gerar Termo de Adesão</a>
-        <a class="btn btn--outline" href="cadastro.html?id=${encodeURIComponent(v.id)}">${icon('edit')} Editar</a>
-        <button class="btn btn--danger" id="btn-excluir">${icon('trash')} Excluir</button>
-      </div>
+      ${htmlProgressoContrato(v, status)}
     </div>
 
     <section class="form-secao">
       <h2 class="form-secao__titulo">${icon('user')} Dados Pessoais</h2>
       <div class="detalhe-grid">
-        <div class="detalhe-item"><b>Nome completo</b><span>${escapeHtml(v.nome)}</span></div>
-        <div class="detalhe-item"><b>CPF</b><span>${escapeHtml(v.cpf)}</span></div>
-        <div class="detalhe-item"><b>RG</b><span>${escapeHtml(v.rg || '-')}</span></div>
-        <div class="detalhe-item"><b>Órgão expedidor</b><span>${escapeHtml(v.rgOrgaoExpedidor || '-')}</span></div>
-        <div class="detalhe-item"><b>Data de expedição do RG</b><span>${formatarDataBR(v.rgDataExpedicao)}</span></div>
-        <div class="detalhe-item"><b>Data de nascimento</b><span>${formatarDataBR(v.dataNascimento)}</span></div>
-        <div class="detalhe-item"><b>Idade</b><span>${calcularIdade(v.dataNascimento)} anos</span></div>
-        <div class="detalhe-item"><b>Sexo</b><span>${escapeHtml(sexoLabel)}</span></div>
-        <div class="detalhe-item"><b>Grau de escolaridade</b><span>${escapeHtml(v.escolaridade || '-')}</span></div>
-        <div class="detalhe-item"><b>Estado civil</b><span>${escapeHtml(estadoCivilLabel)}</span></div>
+        ${item('Nome completo', escapeHtml(v.nome))}
+        ${item('CPF', escapeHtml(v.cpf))}
+        ${item('RG', escapeHtml(v.rg || '-'))}
+        ${item('Órgão expedidor', escapeHtml(v.rgOrgaoExpedidor || '-'))}
+        ${item('Data de expedição do RG', formatarDataBR(v.rgDataExpedicao))}
+        ${item('Data de nascimento', formatarDataBR(v.dataNascimento))}
+        ${item('Idade', idade === '' ? '-' : `${idade} anos`)}
+        ${item('Sexo', escapeHtml(SEXO_LABEL[v.sexo] || v.sexo || '-'))}
+        ${item('Grau de escolaridade', escapeHtml(v.escolaridade || '-'))}
+        ${item('Estado civil', escapeHtml(ESTADO_CIVIL_LABEL[v.estadoCivil] || v.estadoCivil || '-'))}
+        ${item('Contato', htmlContato(v.contato))}
       </div>
     </section>
 
     <section class="form-secao">
       <h2 class="form-secao__titulo">${icon('briefcase')} Dados da Prestação de Serviço</h2>
       <div class="detalhe-grid">
-        <div class="detalhe-item"><b>Carga horária</b><span>${escapeHtml(v.cargaHoraria)} horas</span></div>
-        <div class="detalhe-item"><b>Cargo</b><span>${escapeHtml(v.cargo || '-')}</span></div>
-        <div class="detalhe-item campo--full" style="grid-column:1/-1"><b>Endereço completo</b><span>${escapeHtml(endereco)}</span></div>
-        <div class="detalhe-item"><b>Local de prestação de serviço</b><span>${escapeHtml(v.localPrestacao || '-')}</span></div>
-        <div class="detalhe-item"><b>Data de início</b><span>${formatarDataBR(v.dataInicio)}</span></div>
-        <div class="detalhe-item"><b>Data de término</b><span>${formatarDataBR(v.dataTermino)}</span></div>
-        <div class="detalhe-item"><b>Horário</b><span>${escapeHtml((v.horarioInicio || '-').slice(0,5))} às ${escapeHtml((v.horarioTermino || '-').slice(0,5))}</span></div>
-        <div class="detalhe-item"><b>Dias da semana</b><span>${escapeHtml(formatarDiasSemanaExibicao(v.diasSemana))}</span></div>
-        <div class="detalhe-item"><b>Secretaria</b><span>${escapeHtml(v.secretaria || '-')}</span></div>
-        <div class="detalhe-item"><b>Nome do Secretário</b><span>${escapeHtml(v.nomeSecretario || '-')}</span></div>
+        ${item('Carga horária', `${escapeHtml(v.cargaHoraria)} horas`)}
+        ${item('Cargo', escapeHtml(v.cargo || '-'))}
+        ${item('Endereço completo', escapeHtml(endereco), 'detalhe-item--full')}
+        ${item('Local de prestação de serviço', escapeHtml(v.localPrestacao || '-'))}
+        ${item('Data de início', formatarDataBR(v.dataInicio))}
+        ${item('Data de término', formatarDataBR(v.dataTermino))}
+        ${v.renovado ? item('Renovação', `Renovado em ${formatarDataBR(v.dataRenovacao)} · término anterior: ${formatarDataBR(v.terminoAnterior)}`) : ''}
+        ${item('Horário', `${escapeHtml((v.horarioInicio || '-').slice(0, 5))} às ${escapeHtml((v.horarioTermino || '-').slice(0, 5))}`)}
+        ${item('Dias da semana', escapeHtml(formatarDiasSemanaExibicao(v.diasSemana)))}
+        ${item('Secretaria', escapeHtml(v.secretaria || '-'))}
+        ${item('Nome do Secretário', escapeHtml(v.nomeSecretario || '-'))}
       </div>
     </section>
 
     <section class="form-secao">
-      <h2 class="form-secao__titulo">${icon('list')} Documentos</h2>
+      <h2 class="form-secao__titulo">${icon('file')} Documentos</h2>
       <div id="area-documentos">
-        <p>Carregando histórico de documentos...</p>
+        <span class="skeleton" style="width:50%;margin-bottom:.6rem;"></span>
+        <span class="skeleton" style="width:35%;"></span>
       </div>
     </section>
   `;
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    document.querySelectorAll('[data-largura]').forEach(el => { el.style.width = `${el.dataset.largura}%`; });
+  }));
 
   if (v.foto) {
     document.getElementById('foto-perfil').addEventListener('click', () => {
@@ -119,12 +165,20 @@ function renderizarVoluntario(v) {
     });
   }
 
+  const botaoRenovar = document.getElementById('btn-renovar');
+  if (botaoRenovar) {
+    botaoRenovar.addEventListener('click', () => abrirModalRenovacao(v, (atualizado) => {
+      VOLUNTARIO_ATUAL = atualizado;
+      renderizarVoluntario(atualizado);
+      carregarHistoricoDocumentos(atualizado.id);
+    }));
+  }
+
   document.getElementById('btn-excluir').addEventListener('click', () => {
     showConfirm({
       titulo: 'Excluir voluntário',
       mensagem: `Tem certeza que deseja excluir o cadastro de "${v.nome}"? Esta ação não pode ser desfeita.`,
       textoConfirmar: 'Excluir',
-      textoCancelar: 'Cancelar',
       onConfirm: async () => {
         try {
           await excluirVoluntario(v.id);
@@ -147,7 +201,7 @@ async function carregarHistoricoDocumentos(idVoluntario) {
     const historico = await historicoDocumentos(idVoluntario);
     renderizarHistoricoDocumentos(historico);
   } catch (erro) {
-    area.innerHTML = `<p>Não foi possível carregar o histórico de documentos.</p>`;
+    area.innerHTML = `<p class="texto-suave">Não foi possível carregar o histórico de documentos.</p>`;
   }
 }
 
@@ -156,21 +210,21 @@ function renderizarHistoricoDocumentos(historico) {
 
   if (!historico || historico.length === 0) {
     area.innerHTML = `
-      <p>Nenhum documento gerado ainda.</p>
-      <a class="btn btn--outline btn--sm" href="gerar-termo.html?id=${encodeURIComponent(VOLUNTARIO_ATUAL.id)}">${icon('briefcase')} Gerar Termo de Adesão</a>
+      <p class="texto-suave">Nenhum documento gerado ainda.</p>
+      <a class="btn btn--outline btn--sm" href="gerar-termo.html?id=${encodeURIComponent(VOLUNTARIO_ATUAL.id)}">${icon('file')} Gerar Termo de Adesão</a>
     `;
     return;
   }
 
-  const linhas = historico.map(doc => `
-    <tr>
-      <td>${escapeHtml(doc.tipoDocumento)} <span class="badge badge--alerta" style="margin-left:.4rem;">v${doc.versao}</span></td>
+  const linhas = historico.map((doc, i) => `
+    <tr class="animar-entrada" style="--i:${i}">
+      <td>${escapeHtml(doc.tipoDocumento)} <span class="badge badge--info">v${doc.versao}</span></td>
       <td>${formatarDataHoraBR(doc.dataGeracao)}</td>
       <td>
         <div class="acoes-cel">
-          <button class="btn btn--outline btn--sm" data-visualizar-doc="${doc.id}">${icon('eye')} Visualizar</button>
-          <button class="btn btn--outline btn--sm" data-baixar-doc="${doc.id}">${icon('checkCircle')} Baixar</button>
-          <button class="btn btn--outline btn--sm" data-gerar-novamente="${doc.tipoDocumento.includes('PDF') ? 'pdf' : 'docx'}">${icon('plus')} Gerar novamente</button>
+          <a class="btn btn--outline btn--sm" href="${API_BASE}documentos.php?acao=baixar&id=${encodeURIComponent(doc.id)}" target="_blank" rel="noopener">${icon('eye')} Visualizar</a>
+          <a class="btn btn--outline btn--sm" href="${API_BASE}documentos.php?acao=baixar&id=${encodeURIComponent(doc.id)}" download>${icon('download')} Baixar</a>
+          <button class="btn btn--outline btn--sm" data-gerar-novamente="${doc.tipoDocumento.includes('PDF') ? 'pdf' : 'docx'}">${icon('refresh')} Gerar novamente</button>
         </div>
       </td>
     </tr>
@@ -185,20 +239,11 @@ function renderizarHistoricoDocumentos(historico) {
     </div>
   `;
 
-  area.querySelectorAll('[data-visualizar-doc]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      window.open(`${API_BASE}documentos.php?acao=baixar&id=${btn.getAttribute('data-visualizar-doc')}`, '_blank');
-    });
-  });
-  area.querySelectorAll('[data-baixar-doc]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      window.location.href = `${API_BASE}documentos.php?acao=baixar&id=${btn.getAttribute('data-baixar-doc')}`;
-    });
-  });
   area.querySelectorAll('[data-gerar-novamente]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const formato = btn.getAttribute('data-gerar-novamente');
       btn.disabled = true;
+      btn.querySelector('.icon').classList.add('girando');
       try {
         await gerarDocumento(VOLUNTARIO_ATUAL.id, formato);
         showToast('Termo de Adesão gerado novamente com sucesso!', 'sucesso');
@@ -207,6 +252,7 @@ function renderizarHistoricoDocumentos(historico) {
         const detalhes = (erro.erros && erro.erros.length) ? ' ' + erro.erros.join(' ') : '';
         showToast((erro.message || 'Não foi possível gerar o documento.') + detalhes, 'erro');
         btn.disabled = false;
+        btn.querySelector('.icon').classList.remove('girando');
       }
     });
   });

@@ -58,7 +58,7 @@ switch ($metodo) {
 
         $dados = lerJsonDaRequisicao();
 
-        $erros = Validator::validarVoluntario($dados);
+        $erros = Validator::validarVoluntario($dados, !empty($existente['renovado']) ? 12 : 6);
         if (!empty($dados['cpf']) && $repositorio->existeCpf((string) $dados['cpf'], $id)) {
             $erros[] = 'Já existe um voluntário cadastrado com este CPF.';
         }

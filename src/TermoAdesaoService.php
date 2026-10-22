@@ -42,6 +42,9 @@ class TermoAdesaoService
 
     private const ORDEM_DIAS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'];
 
+    /** Dias da semana são opcionais: sem eles, o termo sai com uma linha para preencher à mão. */
+    private const DIAS_SEMANA_EM_BRANCO = '____________________________';
+
     private string $templateDocx;
     private string $templatePdf;
     private string $storageDir;
@@ -62,7 +65,7 @@ class TermoAdesaoService
      */
     public function validarParaGeracao(array $voluntario): array
     {
-        return Validator::validarVoluntario($voluntario);
+        return Validator::validarVoluntario($voluntario, !empty($voluntario['renovado']) ? 12 : 6);
     }
 
     /** Gera o DOCX preenchido e devolve metadados do arquivo salvo. */
@@ -199,7 +202,7 @@ class TermoAdesaoService
     {
         $codigos = array_filter(array_map('trim', explode(',', $diasSemanaCsv)));
         if (empty($codigos)) {
-            return '';
+            return self::DIAS_SEMANA_EM_BRANCO;
         }
 
         // Se não for um código conhecido (texto livre digitado pelo usuário), devolve como está.

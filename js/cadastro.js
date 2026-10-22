@@ -4,11 +4,16 @@
  * Responsável por: preview de foto (Base64), máscaras de CPF/CEP,
  * cálculo automático de idade, validações, carregamento das listas
  * dinâmicas (Cargos/Secretarias/Locais/Secretarios) e persistência via
- * API (PHP + Google Sheets).
+ * API PHP.
  */
+
+// Selects que têm a opção "Outra (especificar)", que mostra um campo de texto livre.
+const CAMPOS_COM_OUTRA = ['secretaria', 'nomeSecretario', 'localPrestacao'];
 
 let FOTO_BASE64 = '';
 let ID_EDICAO = null;
+// Contrato renovado já foi prorrogado uma vez: o período pode chegar a 12 meses.
+let MESES_MAXIMOS_CONTRATO = 6;
 
 document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(location.search);
@@ -17,9 +22,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   configurarMascaras();
   configurarCalculoIdade();
   configurarUploadFoto();
-  configurarSecretariaOutra();
-  configurarNomeSecretarioOutra();
-  configurarLocalPrestacaoOutra();
+  configurarPeriodoPadrao();
+  CAMPOS_COM_OUTRA.forEach(configurarCampoOutra);
 
   await carregarListasDinamicas();
 
@@ -32,10 +36,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 /* ------------------------------------------------------------------ */
 /* Listas dinâmicas (Cargos, Secretarias, Locais, Secretarios)          */
-/* Carregadas do Google Sheets via api/*.php e usadas para popular os   */
-/* campos de seleção. Em caso de falha (ex.: credenciais do Google      */
-/* Sheets ainda não configuradas), mantém as opções já existentes no    */
-/* HTML como alternativa, para o formulário continuar utilizável.       */
+/* Carregadas via api/*.php e usadas para popular os campos de seleção. */
+/* Em caso de falha, mantém as opções já existentes no HTML como        */
+/* alternativa, para o formulário continuar utilizável.                 */
 /* ------------------------------------------------------------------ */
 async function carregarListasDinamicas() {
   await Promise.all([
@@ -64,7 +67,7 @@ async function popularSelect(idSelect, endpoint, mapear) {
     });
     if (valorAtual) select.value = valorAtual;
   } catch (erro) {
-    // Sem conexão com o Google Sheets: mantém as opções fixas do HTML.
+    // Sem conexão com a API: mantém as opções fixas do HTML.
   }
 }
 
@@ -87,7 +90,7 @@ async function popularSelectComOutra(idSelect, endpoint, mapear) {
     });
     if (valorAtual) select.value = valorAtual;
   } catch (erro) {
-    // Sem conexão com o Google Sheets: mantém as opções fixas do HTML.
+    // Sem conexão com a API: mantém as opções fixas do HTML.
   }
 }
 
@@ -102,14 +105,19 @@ async function carregarParaEdicao(id) {
     return;
   }
 
-  document.getElementById('titulo-pagina').textContent = `Editar ${voluntario.nome} — Sistema de Gestão de Voluntários`;
+  document.title = `Editar ${voluntario.nome} — Sistema de Gestão de Voluntários`;
+  if (voluntario.renovado) MESES_MAXIMOS_CONTRATO = 12;
   document.getElementById('topo-titulo').textContent = 'Editar Voluntário';
+  // Editando, o item ativo do menu é "Voluntários" (e não "Adicionar").
+  document.querySelectorAll('.sidebar__link').forEach(link => {
+    link.classList.toggle('sidebar__link--ativo', link.getAttribute('href') === 'voluntarios.html');
+  });
   document.getElementById('form-titulo').textContent = 'Editar Voluntário';
   document.querySelector('.page-header__subtitulo').textContent = 'Atualize os dados do voluntário e salve as alterações';
-  document.querySelector('button[type="submit"]').innerHTML = `${icon('checkCircle')} Salvar Alterações`;
+  document.querySelector('button[type="submit"]').innerHTML = `${icon('save')} Salvar Alterações`;
 
   const campos = ['nome', 'cpf', 'rg', 'rgOrgaoExpedidor', 'rgDataExpedicao', 'dataNascimento', 'sexo',
-    'escolaridade', 'estadoCivil', 'cargaHoraria', 'cargo', 'cep', 'logradouro', 'numero', 'complemento',
+    'escolaridade', 'estadoCivil', 'contato', 'cargaHoraria', 'cargo', 'cep', 'logradouro', 'numero', 'complemento',
     'bairro', 'cidade', 'estado', 'dataInicio', 'dataTermino'];
 
   campos.forEach(campo => {
@@ -129,38 +137,8 @@ async function carregarParaEdicao(id) {
     });
   }
 
-  // Secretaria: pode ser uma opção da lista ou "outra"
-  const selectSecretaria = document.getElementById('secretaria');
-  const opcaoExisteSecretaria = Array.from(selectSecretaria.options).some(o => o.value === voluntario.secretaria);
-  if (opcaoExisteSecretaria) {
-    selectSecretaria.value = voluntario.secretaria;
-  } else if (voluntario.secretaria) {
-    selectSecretaria.value = '__outra';
-    document.getElementById('secretariaOutra').style.display = 'block';
-    document.getElementById('secretariaOutra').value = voluntario.secretaria;
-  }
-
-  // Nome do Secretário: pode ser uma opção da lista ou "outra"
-  const selectSecretario = document.getElementById('nomeSecretario');
-  const opcaoExisteSecretario = Array.from(selectSecretario.options).some(o => o.value === voluntario.nomeSecretario);
-  if (opcaoExisteSecretario) {
-    selectSecretario.value = voluntario.nomeSecretario;
-  } else if (voluntario.nomeSecretario) {
-    selectSecretario.value = '__outra';
-    document.getElementById('nomeSecretarioOutra').style.display = 'block';
-    document.getElementById('nomeSecretarioOutra').value = voluntario.nomeSecretario;
-  }
-
-  // Local de prestação de serviço: pode ser uma opção da lista ou "outra"
-  const selectLocal = document.getElementById('localPrestacao');
-  const opcaoExisteLocal = Array.from(selectLocal.options).some(o => o.value === voluntario.localPrestacao);
-  if (opcaoExisteLocal) {
-    selectLocal.value = voluntario.localPrestacao;
-  } else if (voluntario.localPrestacao) {
-    selectLocal.value = '__outra';
-    document.getElementById('localPrestacaoOutra').style.display = 'block';
-    document.getElementById('localPrestacaoOutra').value = voluntario.localPrestacao;
-  }
+  // Secretaria, secretário e local: podem ser uma opção da lista ou "outra"
+  CAMPOS_COM_OUTRA.forEach(campo => preencherCampoOutra(campo, voluntario[campo]));
 
   if (voluntario.foto) {
     FOTO_BASE64 = voluntario.foto;
@@ -182,6 +160,11 @@ function configurarMascaras() {
   const cepInput = document.getElementById('cep');
   cepInput.addEventListener('input', () => {
     cepInput.value = maskCEP(cepInput.value);
+  });
+
+  const contatoInput = document.getElementById('contato');
+  contatoInput.addEventListener('input', () => {
+    contatoInput.value = maskTelefone(contatoInput.value);
   });
 }
 
@@ -216,63 +199,54 @@ function configurarUploadFoto() {
     leitor.onload = (e) => {
       FOTO_BASE64 = e.target.result;
       document.getElementById('preview-foto').innerHTML = `<img src="${FOTO_BASE64}" alt="Prévia da foto">`;
-      exibirErroCampo('foto', false);
     };
     leitor.readAsDataURL(arquivo);
   });
 }
 
 /* ------------------------------------------------------------------ */
-/* Campo "Secretaria": exibe input livre quando "Outra" é selecionado  */
+/* Botão "Hoje + 6 meses" (prazo máximo do contrato)                    */
 /* ------------------------------------------------------------------ */
-function configurarSecretariaOutra() {
-  const select = document.getElementById('secretaria');
-  const outraInput = document.getElementById('secretariaOutra');
-  select.addEventListener('change', () => {
-    outraInput.style.display = select.value === '__outra' ? 'block' : 'none';
-    if (select.value !== '__outra') outraInput.value = '';
+function configurarPeriodoPadrao() {
+  document.getElementById('preencherPeriodo').addEventListener('click', () => {
+    const hoje = new Date();
+    const termino = new Date(hoje);
+    termino.setMonth(termino.getMonth() + 6);
+    const formato = data => `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`;
+    document.getElementById('dataInicio').value = formato(hoje);
+    document.getElementById('dataTermino').value = formato(termino);
   });
 }
 
-function obterSecretaria() {
-  const select = document.getElementById('secretaria');
-  if (select.value === '__outra') return document.getElementById('secretariaOutra').value.trim();
-  return select.value;
-}
-
 /* ------------------------------------------------------------------ */
-/* Campo "Nome do Secretário": exibe input livre quando "Outra" é selecionado */
+/* Selects com "Outra (especificar)": exibe um input livre             */
 /* ------------------------------------------------------------------ */
-function configurarNomeSecretarioOutra() {
-  const select = document.getElementById('nomeSecretario');
-  const outraInput = document.getElementById('nomeSecretarioOutra');
+function configurarCampoOutra(campo) {
+  const select = document.getElementById(campo);
+  const outraInput = document.getElementById(`${campo}Outra`);
   select.addEventListener('change', () => {
-    outraInput.style.display = select.value === '__outra' ? 'block' : 'none';
+    outraInput.hidden = select.value !== '__outra';
     if (select.value !== '__outra') outraInput.value = '';
+    else outraInput.focus();
   });
 }
 
-function obterNomeSecretario() {
-  const select = document.getElementById('nomeSecretario');
-  if (select.value === '__outra') return document.getElementById('nomeSecretarioOutra').value.trim();
-  return select.value;
+/** Seleciona o valor salvo; se não estiver na lista, usa "outra" com o texto livre. */
+function preencherCampoOutra(campo, valor) {
+  const select = document.getElementById(campo);
+  if (Array.from(select.options).some(o => o.value === valor)) {
+    select.value = valor;
+  } else if (valor) {
+    select.value = '__outra';
+    const outraInput = document.getElementById(`${campo}Outra`);
+    outraInput.hidden = false;
+    outraInput.value = valor;
+  }
 }
 
-/* ------------------------------------------------------------------ */
-/* Campo "Local de prestação de serviço": exibe input livre quando "Outro" é selecionado */
-/* ------------------------------------------------------------------ */
-function configurarLocalPrestacaoOutra() {
-  const select = document.getElementById('localPrestacao');
-  const outraInput = document.getElementById('localPrestacaoOutra');
-  select.addEventListener('change', () => {
-    outraInput.style.display = select.value === '__outra' ? 'block' : 'none';
-    if (select.value !== '__outra') outraInput.value = '';
-  });
-}
-
-function obterLocalPrestacao() {
-  const select = document.getElementById('localPrestacao');
-  if (select.value === '__outra') return document.getElementById('localPrestacaoOutra').value.trim();
+function obterValorComOutra(campo) {
+  const select = document.getElementById(campo);
+  if (select.value === '__outra') return document.getElementById(`${campo}Outra`).value.trim();
   return select.value;
 }
 
@@ -304,6 +278,7 @@ function validarFormulario() {
   const sexo = document.getElementById('sexo').value;
   const escolaridade = document.getElementById('escolaridade').value;
   const estadoCivil = document.getElementById('estadoCivil').value;
+  const contato = document.getElementById('contato').value.replace(/\D/g, '');
 
   const cargaHoraria = document.getElementById('cargaHoraria').value;
   const cargo = document.getElementById('cargo').value.trim();
@@ -313,14 +288,13 @@ function validarFormulario() {
   const bairro = document.getElementById('bairro').value.trim();
   const cidade = document.getElementById('cidade').value.trim();
   const estado = document.getElementById('estado').value;
-  const localPrestacao = obterLocalPrestacao();
+  const localPrestacao = obterValorComOutra('localPrestacao');
   const dataInicio = document.getElementById('dataInicio').value;
   const dataTermino = document.getElementById('dataTermino').value;
   const horarioInicio = document.getElementById('horarioInicio').value;
   const horarioTermino = document.getElementById('horarioTermino').value;
-  const diasSemana = obterDiasSemanaSelecionados();
-  const secretaria = obterSecretaria();
-  const nomeSecretario = obterNomeSecretario();
+  const secretaria = obterValorComOutra('secretaria');
+  const nomeSecretario = obterValorComOutra('nomeSecretario');
 
   // Foto, RG, órgão expedidor e data de expedição são opcionais.
   marcar('nome', nome.length === 0);
@@ -330,6 +304,7 @@ function validarFormulario() {
   marcar('sexo', !sexo);
   marcar('escolaridade', !escolaridade);
   marcar('estadoCivil', !estadoCivil);
+  marcar('contato', contato.length > 0 && contato.length !== 10 && contato.length !== 11);
 
   marcar('cargaHoraria', !cargaHoraria);
   marcar('cargo', cargo.length === 0);
@@ -343,14 +318,12 @@ function validarFormulario() {
   marcar('dataInicio', !dataInicio);
 
   const datasValidas = dataInicio && dataTermino && dataTermino > dataInicio;
-  const dentroDoPrazoMaximo = dataInicio && dataTermino && diferencaEmMeses(dataInicio, dataTermino) <= 6;
+  const dentroDoPrazoMaximo = dataInicio && dataTermino && diferencaEmMeses(dataInicio, dataTermino) <= MESES_MAXIMOS_CONTRATO;
   marcar('dataTermino', !dataTermino || !datasValidas || !dentroDoPrazoMaximo);
 
   marcar('horarioInicio', !horarioInicio);
   const horariosValidos = horarioInicio && horarioTermino && horarioTermino > horarioInicio;
   marcar('horarioTermino', !horarioTermino || !horariosValidos);
-
-  marcar('diasSemana', diasSemana.length === 0);
 
   marcar('secretaria', !secretaria);
   marcar('nomeSecretario', nomeSecretario.length === 0);
@@ -390,6 +363,7 @@ async function aoSubmeter(evento) {
     sexo: document.getElementById('sexo').value,
     escolaridade: document.getElementById('escolaridade').value,
     estadoCivil: document.getElementById('estadoCivil').value,
+    contato: document.getElementById('contato').value.trim(),
 
     cargaHoraria: document.getElementById('cargaHoraria').value,
     cargo: document.getElementById('cargo').value.trim(),
@@ -400,20 +374,20 @@ async function aoSubmeter(evento) {
     bairro: document.getElementById('bairro').value.trim(),
     cidade: document.getElementById('cidade').value.trim(),
     estado: document.getElementById('estado').value,
-    localPrestacao: obterLocalPrestacao(),
+    localPrestacao: obterValorComOutra('localPrestacao'),
     dataInicio: document.getElementById('dataInicio').value,
     dataTermino: document.getElementById('dataTermino').value,
     horarioInicio: document.getElementById('horarioInicio').value,
     horarioTermino: document.getElementById('horarioTermino').value,
     diasSemana: obterDiasSemanaSelecionados(),
-    secretaria: obterSecretaria(),
-    nomeSecretario: obterNomeSecretario(),
+    secretaria: obterValorComOutra('secretaria'),
+    nomeSecretario: obterValorComOutra('nomeSecretario'),
   };
 
   const botaoSubmeter = document.querySelector('button[type="submit"]');
   const textoOriginalBotao = botaoSubmeter.innerHTML;
   botaoSubmeter.disabled = true;
-  botaoSubmeter.innerHTML = `${icon('clock')} Salvando...`;
+  botaoSubmeter.innerHTML = `${icon('refresh', 'girando')} Salvando...`;
 
   try {
     if (ID_EDICAO) {

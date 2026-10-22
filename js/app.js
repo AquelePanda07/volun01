@@ -1,9 +1,9 @@
 /**
  * app.js
  * Núcleo compartilhado do Sistema de Gestão de Voluntários.
- * Contém: cliente da API PHP (fetch), cálculos (idade/status), máscaras,
- * validações, ícones SVG, toasts, modal de confirmação e navegação.
- * Este arquivo é carregado em TODAS as páginas.
+ * Contém: layout (sidebar/topbar), cliente da API PHP (fetch), cálculos
+ * (idade/status), máscaras, validações, ícones SVG, toasts, modais e tema.
+ * Este arquivo é carregado em TODAS as páginas, antes do script da página.
  */
 
 /* ------------------------------------------------------------------ */
@@ -15,28 +15,47 @@ const API_BASE = 'api/';
 /* Ícones (SVG inline - estilo "feather", leves e sem dependências)    */
 /* ------------------------------------------------------------------ */
 const ICONS = {
+  home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>',
   plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>',
   list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>',
+  grid: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line></svg>',
   eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>',
   edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>',
   trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>',
   search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>',
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>',
+  arrowRight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>',
   users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>',
+  user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>',
   checkCircle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
   xCircle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
   clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
+  calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>',
+  mapPin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>',
+  alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
+  briefcase: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>',
+  file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>',
+  download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>',
+  refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>',
+  repeat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>',
+  save: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>',
   menu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>',
   camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>',
-  alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
-  user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>',
-  briefcase: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>',
   sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>',
   moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>'
 };
 
 function icon(name, extraClass) {
   return `<span class="icon ${extraClass || ''}">${ICONS[name] || ''}</span>`;
+}
+
+/** Preenche os <span data-icon="nome"> escritos direto no HTML. */
+function hidratarIcones(raiz = document) {
+  raiz.querySelectorAll('[data-icon]').forEach(el => {
+    el.classList.add('icon');
+    el.innerHTML = ICONS[el.dataset.icon] || '';
+    el.removeAttribute('data-icon');
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -65,7 +84,9 @@ async function apiFetch(caminho, opcoes = {}) {
   }
 
   if (!resposta.ok || !corpo.sucesso) {
-    throw new ErroApi(corpo.mensagem || 'Ocorreu um erro ao comunicar com o servidor.', corpo.erros);
+    const erro = new ErroApi(corpo.mensagem || 'Ocorreu um erro ao comunicar com o servidor.', corpo.erros);
+    erro.falhas = corpo.falhas || [];
+    throw erro;
   }
   return corpo;
 }
@@ -111,32 +132,26 @@ async function previsualizarTermo(idVoluntario, dataEmissao) {
 
 /** Gera o Termo de Adesão (PDF ou DOCX) e registra no histórico. */
 async function gerarDocumento(idVoluntario, formato, dataEmissao) {
-  const resposta = await apiFetch('documentos.php', {
+  return apiFetch('documentos.php', {
     method: 'POST',
     body: JSON.stringify({ idVoluntario, formato, dataEmissao }),
   });
-  return resposta;
 }
 
 /** Gera o Termo de Adesão de vários voluntários de uma vez (devolve link de um ZIP). */
 async function gerarDocumentosEmLote(idsVoluntarios, formato, dataEmissao) {
-  const resposta = await fetch(`${API_BASE}documentos.php?acao=lote`, {
+  return apiFetch('documentos.php?acao=lote', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json; charset=utf-8' },
     body: JSON.stringify({ idsVoluntarios, formato, dataEmissao }),
   });
-  let corpo = null;
-  try {
-    corpo = await resposta.json();
-  } catch (e) {
-    throw new ErroApi('Resposta inesperada do servidor.');
-  }
-  if (!resposta.ok || !corpo.sucesso) {
-    const erro = new ErroApi(corpo.mensagem || 'Não foi possível gerar os termos em lote.');
-    erro.falhas = corpo.falhas || [];
-    throw erro;
-  }
-  return corpo;
+}
+
+/** Marca o contrato vigente do voluntário como renovado, com a nova data de término. */
+async function renovarContrato(idVoluntario, novaDataTermino) {
+  return apiFetch('contratos.php?acao=renovar', {
+    method: 'POST',
+    body: JSON.stringify({ idVoluntario, novaDataTermino }),
+  });
 }
 
 async function historicoDocumentos(idVoluntario) {
@@ -183,6 +198,16 @@ function calcularDiasRestantes(dataTerminoISO) {
   return Math.round((termino - hoje) / 86400000);
 }
 
+/** Percentual (0–100) do contrato já cumprido até hoje. */
+function calcularProgressoContrato(dataInicioISO, dataTerminoISO) {
+  if (!dataInicioISO || !dataTerminoISO) return null;
+  const inicio = new Date(dataInicioISO + 'T00:00:00').getTime();
+  const termino = new Date(dataTerminoISO + 'T00:00:00').getTime();
+  if (isNaN(inicio) || isNaN(termino) || termino <= inicio) return null;
+  const decorrido = (zerarHora(new Date()).getTime() - inicio) / (termino - inicio);
+  return Math.round(Math.min(1, Math.max(0, decorrido)) * 100);
+}
+
 /** Texto amigável para a coluna "Dias para o Término". */
 function formatarDiasRestantes(diasRestantes, status) {
   if (status === 'ENCERRADO' || diasRestantes === null) return 'Encerrado';
@@ -201,13 +226,20 @@ function estiloDestaquePrazo(diasRestantes, status) {
     return '';
   }
   const intensidade = 1 - (diasRestantes / JANELA_DIAS);
-  const alpha = (0.12 + intensidade * 0.5).toFixed(2);
-  return `background-color: rgba(201, 138, 31, ${alpha});`;
+  const alpha = (0.08 + intensidade * 0.32).toFixed(2);
+  return `--destaque-prazo: rgba(217, 150, 36, ${alpha});`;
 }
 
 function zerarHora(data) {
   data.setHours(0, 0, 0, 0);
   return data;
+}
+
+function hojeISO() {
+  const hoje = new Date();
+  const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+  const dia = String(hoje.getDate()).padStart(2, '0');
+  return `${hoje.getFullYear()}-${mes}-${dia}`;
 }
 
 const STATUS_LABEL = {
@@ -221,6 +253,113 @@ const STATUS_ICON = {
   A_INICIAR: 'clock',
   ENCERRADO: 'xCircle'
 };
+
+const STATUS_BADGE = {
+  ATIVO: 'badge--sucesso',
+  A_INICIAR: 'badge--alerta',
+  ENCERRADO: 'badge--perigo'
+};
+
+/** Selo colorido com o status do contrato. */
+function badgeStatus(status) {
+  return `<span class="badge ${STATUS_BADGE[status]}">${icon(STATUS_ICON[status])}${STATUS_LABEL[status]}</span>`;
+}
+
+/* ------------------------------------------------------------------ */
+/* Renovação de contrato                                                */
+/* ------------------------------------------------------------------ */
+const JANELA_RENOVACAO_DIAS = 60; // mesma janela de ContratoService::JANELA_RENOVACAO_DIAS
+
+/** Renovação disponível: contrato ainda não renovado, nos últimos 60 dias ou já encerrado. */
+function podeRenovarContrato(v) {
+  if (v.renovado || !v.dataTermino) return false;
+  const status = calcularStatusContrato(v.dataInicio, v.dataTermino);
+  const dias = calcularDiasRestantes(v.dataTermino);
+  return status !== 'A_INICIAR' && dias !== null && dias <= JANELA_RENOVACAO_DIAS;
+}
+
+/** Selo "Renovado" (com o término anterior no tooltip). */
+function badgeRenovado(v) {
+  if (!v.renovado) return '';
+  const dica = v.terminoAnterior ? `Contrato renovado — término anterior: ${formatarDataBR(v.terminoAnterior)}` : 'Contrato renovado';
+  return `<span class="badge badge--renovado" title="${escapeHtml(dica)}">${icon('repeat')}Renovado</span>`;
+}
+
+/** Ícone compacto de renovado, para ficar ao lado do nome em listas. */
+function seloRenovado(v) {
+  if (!v.renovado) return '';
+  return `<span class="selo-renovado" title="Contrato renovado" aria-label="Contrato renovado">${icon('repeat')}</span>`;
+}
+
+function dataParaISO(data) {
+  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`;
+}
+
+function somarMesesISO(iso, meses) {
+  const data = new Date(iso + 'T00:00:00');
+  const dia = data.getDate();
+  data.setMonth(data.getMonth() + meses);
+  if (data.getDate() !== dia) data.setDate(0); // 31/08 + 6 meses -> 28/02, e não 03/03
+  return dataParaISO(data);
+}
+
+function somarDiasISO(iso, dias) {
+  const data = new Date(iso + 'T00:00:00');
+  data.setDate(data.getDate() + dias);
+  return dataParaISO(data);
+}
+
+/**
+ * Modal "Marcar como renovado": pede a nova data de término (até 6 meses
+ * após o término atual) e chama aoRenovar(voluntarioAtualizado) no sucesso.
+ */
+function abrirModalRenovacao(v, aoRenovar) {
+  const minimo = [somarDiasISO(v.dataTermino, 1), hojeISO()].sort().pop();
+  const maximo = somarMesesISO(v.dataTermino, 6);
+  let salvando = false;
+
+  const { overlay, fechar } = abrirModal(`
+    <div class="modal-box modal-box--medio" role="dialog" aria-modal="true" aria-labelledby="renovacao-titulo">
+      <h3 id="renovacao-titulo">${icon('repeat')} Renovar contrato</h3>
+      <p>O contrato de <b>${escapeHtml(v.nome)}</b> termina em <b>${formatarDataBR(v.dataTermino)}</b>. Ao marcar como renovado, a data de término é prorrogada e o voluntário passa a exibir o selo <span class="badge badge--renovado">${icon('repeat')}Renovado</span>.</p>
+      <div class="campo">
+        <label for="renovacao-termino">Nova data de término</label>
+        <input type="date" id="renovacao-termino" value="${maximo}" min="${minimo}" max="${maximo}" required>
+        <small class="texto-suave">Até 6 meses após o término atual (máximo ${formatarDataBR(maximo)}).</small>
+      </div>
+      <div class="modal-acoes">
+        <button type="button" class="btn btn--outline" data-fechar>Cancelar</button>
+        <button type="button" class="btn" data-acao="renovar">${icon('repeat')} Marcar como renovado</button>
+      </div>
+    </div>
+  `, { podeFechar: () => !salvando });
+
+  const campo = overlay.querySelector('#renovacao-termino');
+  const botao = overlay.querySelector('[data-acao="renovar"]');
+  campo.focus();
+  botao.addEventListener('click', async () => {
+    const novaData = campo.value;
+    if (!novaData || novaData < minimo || novaData > maximo) {
+      showToast(`Escolha uma data entre ${formatarDataBR(minimo)} e ${formatarDataBR(maximo)}.`, 'erro');
+      return;
+    }
+    salvando = true;
+    botao.disabled = true;
+    botao.innerHTML = `${icon('refresh', 'girando')} Salvando...`;
+    try {
+      const resposta = await renovarContrato(v.id, novaData);
+      salvando = false;
+      fechar();
+      showToast(resposta.mensagem, 'sucesso');
+      if (typeof aoRenovar === 'function') aoRenovar(resposta.dados);
+    } catch (erro) {
+      salvando = false;
+      botao.disabled = false;
+      botao.innerHTML = `${icon('repeat')} Marcar como renovado`;
+      showToast(erro.message || 'Não foi possível renovar o contrato.', 'erro');
+    }
+  });
+}
 
 /* ------------------------------------------------------------------ */
 /* Formatação                                                           */
@@ -242,6 +381,13 @@ function escapeHtml(str) {
     .replaceAll("'", '&#39;');
 }
 
+/** Foto do voluntário ou, sem foto, um avatar com a inicial do nome. */
+function fotoOuAvatar(v) {
+  if (v.foto) return v.foto;
+  const inicial = escapeHtml((v.nome || '?').trim().charAt(0).toUpperCase());
+  return `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#dcecfd"/><stop offset="1" stop-color="#b9d8f7"/></linearGradient></defs><rect width="120" height="120" fill="url(#g)"/><text x="50%" y="55%" font-family="Segoe UI, Arial" font-weight="600" font-size="50" fill="#1c64b0" text-anchor="middle" dominant-baseline="middle">${inicial}</text></svg>`)}`;
+}
+
 /* ------------------------------------------------------------------ */
 /* Máscaras                                                             */
 /* ------------------------------------------------------------------ */
@@ -252,6 +398,14 @@ function maskCPF(value) {
     .replace(/(\d{3})(\d)/, '$1.$2')
     .replace(/(\d{3})(\d)/, '$1.$2')
     .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+}
+
+function maskTelefone(value) {
+  const digitos = value.replace(/\D/g, '').slice(0, 11);
+  if (digitos.length <= 10) {
+    return digitos.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{4})(\d)/, '$1-$2');
+  }
+  return digitos.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2');
 }
 
 function maskCEP(value) {
@@ -315,56 +469,23 @@ function showToast(mensagem, tipo = 'sucesso') {
 }
 
 /* ------------------------------------------------------------------ */
-/* Modal de confirmação (usado antes de excluir)                       */
+/* Modais                                                               */
 /* ------------------------------------------------------------------ */
-function showConfirm({ titulo = 'Confirmar ação', mensagem, textoConfirmar = 'Confirmar', textoCancelar = 'Cancelar', onConfirm }) {
+
+/**
+ * Abre um modal com o HTML informado. Fecha ao clicar fora, com Esc ou em
+ * qualquer elemento [data-fechar]. "podeFechar" permite travar o fechamento
+ * (ex.: enquanto um documento está sendo gerado).
+ */
+function abrirModal(conteudoHtml, { classe = '', podeFechar = () => true } = {}) {
   const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
-  overlay.innerHTML = `
-    <div class="modal-box modal-confirm" role="dialog" aria-modal="true">
-      <div class="modal-confirm__icon">${ICONS.alert}</div>
-      <h3>${escapeHtml(titulo)}</h3>
-      <p>${escapeHtml(mensagem)}</p>
-      <div class="modal-confirm__actions">
-        <button type="button" class="btn btn--outline" data-acao="cancelar">${escapeHtml(textoCancelar)}</button>
-        <button type="button" class="btn btn--danger" data-acao="confirmar">${escapeHtml(textoConfirmar)}</button>
-      </div>
-    </div>
-  `;
+  overlay.className = `modal-overlay ${classe}`;
+  overlay.innerHTML = conteudoHtml;
   document.body.appendChild(overlay);
   requestAnimationFrame(() => overlay.classList.add('modal-overlay--visivel'));
 
   function fechar() {
-    overlay.classList.remove('modal-overlay--visivel');
-    setTimeout(() => overlay.remove(), 200);
-  }
-
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) fechar();
-  });
-  overlay.querySelector('[data-acao="cancelar"]').addEventListener('click', fechar);
-  overlay.querySelector('[data-acao="confirmar"]').addEventListener('click', () => {
-    fechar();
-    if (typeof onConfirm === 'function') onConfirm();
-  });
-}
-
-/* ------------------------------------------------------------------ */
-/* Visualizador de foto em tamanho completo (sem recorte)              */
-/* ------------------------------------------------------------------ */
-function mostrarFotoCompleta(src, alt = 'Foto') {
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay modal-foto';
-  overlay.innerHTML = `
-    <div class="modal-foto__conteudo" role="dialog" aria-modal="true" aria-label="${escapeHtml(alt)}">
-      <button type="button" class="modal-foto__fechar" aria-label="Fechar">&times;</button>
-      <img class="modal-foto__img" src="${src}" alt="${escapeHtml(alt)}">
-    </div>
-  `;
-  document.body.appendChild(overlay);
-  requestAnimationFrame(() => overlay.classList.add('modal-overlay--visivel'));
-
-  function fechar() {
+    if (!podeFechar()) return;
     document.removeEventListener('keydown', aoTeclar);
     overlay.classList.remove('modal-overlay--visivel');
     setTimeout(() => overlay.remove(), 200);
@@ -373,11 +494,41 @@ function mostrarFotoCompleta(src, alt = 'Foto') {
     if (e.key === 'Escape') fechar();
   }
 
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) fechar();
-  });
-  overlay.querySelector('.modal-foto__fechar').addEventListener('click', fechar);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) fechar(); });
+  overlay.querySelectorAll('[data-fechar]').forEach(el => el.addEventListener('click', fechar));
   document.addEventListener('keydown', aoTeclar);
+  return { overlay, fechar };
+}
+
+/** Modal de confirmação (usado antes de excluir ou gerar documentos). */
+function showConfirm({ titulo = 'Confirmar ação', mensagem, textoConfirmar = 'Confirmar', textoCancelar = 'Cancelar', perigo = true, onConfirm }) {
+  const { overlay, fechar } = abrirModal(`
+    <div class="modal-box modal-confirm" role="dialog" aria-modal="true">
+      <div class="modal-confirm__icon ${perigo ? '' : 'modal-confirm__icon--info'}">${ICONS[perigo ? 'alert' : 'file']}</div>
+      <h3>${escapeHtml(titulo)}</h3>
+      <p>${escapeHtml(mensagem)}</p>
+      <div class="modal-acoes modal-acoes--centro">
+        <button type="button" class="btn btn--outline" data-fechar>${escapeHtml(textoCancelar)}</button>
+        <button type="button" class="btn ${perigo ? 'btn--danger' : ''}" data-acao="confirmar">${escapeHtml(textoConfirmar)}</button>
+      </div>
+    </div>
+  `);
+  const botaoConfirmar = overlay.querySelector('[data-acao="confirmar"]');
+  botaoConfirmar.focus();
+  botaoConfirmar.addEventListener('click', () => {
+    fechar();
+    if (typeof onConfirm === 'function') onConfirm();
+  });
+}
+
+/** Visualizador de foto em tamanho completo (sem recorte). */
+function mostrarFotoCompleta(src, alt = 'Foto') {
+  const { overlay } = abrirModal(`
+    <div class="modal-foto__conteudo" role="dialog" aria-modal="true" aria-label="${escapeHtml(alt)}">
+      <button type="button" class="modal-foto__fechar" aria-label="Fechar" data-fechar>&times;</button>
+      <img class="modal-foto__img" src="${src}" alt="${escapeHtml(alt)}">
+    </div>
+  `, { classe: 'modal-foto' });
   overlay.querySelector('.modal-foto__fechar').focus();
 }
 
@@ -401,32 +552,63 @@ function consumirFlashMessage() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Navegação (sidebar/topbar compartilhada)                            */
+/* Layout compartilhado (sidebar + topbar)                             */
+/* Cada página só escreve o seu <main class="page-content">; o restante */
+/* é montado aqui, para não repetir o menu em todos os HTML.           */
 /* ------------------------------------------------------------------ */
-function initNavegacao() {
-  const toggle = document.querySelector('[data-nav-toggle]');
-  const sidebar = document.querySelector('.sidebar');
-  const overlay = document.querySelector('.sidebar-overlay');
+const NAV_LINKS = [
+  { href: 'index.html', icone: 'home', texto: 'Início' },
+  { href: 'voluntarios.html', icone: 'users', texto: 'Voluntários' },
+  { href: 'por-cargo.html', icone: 'briefcase', texto: 'Por Cargo' },
+  { href: 'cadastro.html', icone: 'plus', texto: 'Adicionar Voluntário' },
+];
 
-  if (toggle && sidebar) {
-    toggle.addEventListener('click', () => {
-      sidebar.classList.toggle('sidebar--aberta');
-      if (overlay) overlay.classList.toggle('sidebar-overlay--visivel');
-    });
-  }
-  if (overlay && sidebar) {
-    overlay.addEventListener('click', () => {
-      sidebar.classList.remove('sidebar--aberta');
-      overlay.classList.remove('sidebar-overlay--visivel');
-    });
-  }
+function montarLayout() {
+  const main = document.querySelector('main.page-content');
+  if (!main) return;
 
-  // Marca o link ativo com base na página atual
-  const paginaAtual = location.pathname.split('/').pop() || 'index.html';
-  document.querySelectorAll('.sidebar__link').forEach(link => {
-    const href = link.getAttribute('href');
-    if (href === paginaAtual) link.classList.add('sidebar__link--ativo');
-  });
+  // Páginas internas (ex.: visualizar) podem destacar outro item com data-nav no <body>.
+  const paginaAtual = document.body.dataset.nav || location.pathname.split('/').pop() || 'index.html';
+  const links = NAV_LINKS.map(l => `
+    <a class="sidebar__link${l.href === paginaAtual ? ' sidebar__link--ativo' : ''}" href="${l.href}">
+      ${icon(l.icone)}<span>${l.texto}</span>
+    </a>
+  `).join('');
+
+  const layout = document.createElement('div');
+  layout.className = 'app-layout';
+  layout.innerHTML = `
+    <div class="sidebar-overlay"></div>
+    <aside class="sidebar">
+      <a class="sidebar__brand" href="index.html">
+        <img class="sidebar__logo sidebar__logo--clara" src="img/Logos/Logo preta.png" alt="SEMED Itapuã do Oeste/RO">
+        <img class="sidebar__logo sidebar__logo--escura" src="img/Logos/Logo Branca.png" alt="SEMED Itapuã do Oeste/RO">
+        <div>
+          <strong>Gestão de Voluntários</strong>
+          <span>Painel administrativo</span>
+        </div>
+      </a>
+      <nav class="sidebar__nav">${links}</nav>
+      <div class="sidebar__rodape">Prefeitura de Itapuã do Oeste/RO</div>
+    </aside>
+    <div class="main-area">
+      <header class="topbar">
+        <button class="topbar__toggle" type="button" aria-label="Abrir menu">${icon('menu')}</button>
+        <span class="topbar__titulo" id="topo-titulo">${escapeHtml(document.body.dataset.titulo || '')}</span>
+      </header>
+    </div>
+  `;
+  main.before(layout);
+  layout.querySelector('.main-area').appendChild(main);
+
+  const sidebar = layout.querySelector('.sidebar');
+  const overlay = layout.querySelector('.sidebar-overlay');
+  const alternarMenu = (abrir) => {
+    sidebar.classList.toggle('sidebar--aberta', abrir);
+    overlay.classList.toggle('sidebar-overlay--visivel', abrir);
+  };
+  layout.querySelector('.topbar__toggle').addEventListener('click', () => alternarMenu(!sidebar.classList.contains('sidebar--aberta')));
+  overlay.addEventListener('click', () => alternarMenu(false));
 }
 
 /* ------------------------------------------------------------------ */
@@ -469,8 +651,12 @@ function initTema() {
   topbar.appendChild(botao);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  initNavegacao();
-  initTema();
-  consumirFlashMessage();
-});
+/* ------------------------------------------------------------------ */
+/* Inicialização                                                        */
+/* app.js é carregado no fim do <body>, então o HTML da página já existe: */
+/* o layout é montado na hora, antes dos scripts de cada página rodarem. */
+/* ------------------------------------------------------------------ */
+montarLayout();
+hidratarIcones();
+initTema();
+document.addEventListener('DOMContentLoaded', consumirFlashMessage);

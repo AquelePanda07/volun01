@@ -289,7 +289,11 @@ class GoogleSheetsService extends RepositorioDados
             return self::$estruturaPorAba[$chave];
         }
         $emDisco = $this->lerCacheDisco('estrutura_' . $chave);
-        if ($emDisco !== null && ($emDisco['expiraEm'] ?? 0) > time()) {
+        // Estrutura em cache sem alguma coluna configurada (ex.: coluna nova
+        // acrescentada ao sistema) é descartada, senão a coluna seria ignorada.
+        $cacheCompleto = $emDisco !== null
+            && empty(array_diff($this->colunasPorAba[$aba], array_keys($emDisco['estrutura']['indices'] ?? [])));
+        if ($cacheCompleto && ($emDisco['expiraEm'] ?? 0) > time()) {
             return self::$estruturaPorAba[$chave] = $emDisco['estrutura'];
         }
 

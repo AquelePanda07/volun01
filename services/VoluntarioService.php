@@ -25,6 +25,7 @@ class VoluntarioService
         'sexo' => 'Sexo',
         'escolaridade' => 'Escolaridade',
         'estadoCivil' => 'Estado Civil',
+        'contato' => 'Contato',
         'cep' => 'CEP',
         'logradouro' => 'Logradouro',
         'numero' => 'Numero',

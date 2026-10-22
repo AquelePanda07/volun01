@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voluntários por Cargo — Sistema de Gestão de Voluntários</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script>try { if (localStorage.getItem('sgv_tema') === 'dark') document.documentElement.dataset.theme = 'dark'; } catch (e) {}</script>
+</head>
+<body data-titulo="Voluntários por Cargo">
+  <main class="page-content">
+    <div class="page-header">
+      <div>
+        <h1>Voluntários por Cargo</h1>
+        <p class="page-header__subtitulo">Veja quem atua em cada cargo/função e a situação dos contratos</p>
+      </div>
+      <div class="page-header__acoes">
+        <button type="button" class="btn btn--outline" id="btn-alternar-grupos">
+          <span data-icon="list"></span>
+          <span id="btn-alternar-grupos-texto">Recolher todos</span>
+        </button>
+        <a class="btn" href="cadastro.html">
+          <span data-icon="plus"></span>
+          Adicionar Voluntário
+        </a>
+      </div>
+    </div>
+
+    <section class="filtros-barra">
+      <div class="busca-campo">
+        <span data-icon="search"></span>
+        <input type="search" id="filtro-busca" placeholder="Pesquisar por nome, CPF, local ou cargo...">
+      </div>
+      <div class="filtro-grupo">
+        <label for="filtro-status">Status do contrato</label>
+        <select id="filtro-status">
+          <option value="">Todos</option>
+          <option value="ATIVO">Ativo</option>
+          <option value="A_INICIAR">A Iniciar</option>
+          <option value="ENCERRADO">Encerrado</option>
+        </select>
+      </div>
+    </section>
+
+    <div class="cargo-resumo" id="cargo-resumo"></div>
+
+    <div class="cargo-grupos" id="cargo-grupos">
+      <!-- Preenchido por js/por-cargo.js -->
+    </div>
+
+    <div class="estado-vazio" id="estado-vazio" hidden>
+      <span data-icon="briefcase"></span>
+      <p id="estado-vazio-texto">Nenhum voluntário cadastrado ainda.</p>
+      <a class="btn" href="cadastro.html">Adicionar voluntário</a>
+    </div>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script src="js/por-cargo.js"></script>
+</body>
+</html>

@@ -37,6 +37,9 @@ CREATE TABLE IF NOT EXISTS `contratos` (
   `nome_secretario` varchar(255) NOT NULL DEFAULT '',
   `status` varchar(255) NOT NULL DEFAULT '',
   `data_cadastro` varchar(255) NOT NULL DEFAULT '',
+  `renovado` varchar(255) NOT NULL DEFAULT '',
+  `data_renovacao` varchar(255) NOT NULL DEFAULT '',
+  `termino_anterior` varchar(255) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   KEY `idx_id_voluntario` (`id_voluntario`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -95,6 +98,7 @@ CREATE TABLE IF NOT EXISTS `voluntarios` (
   `cidade` varchar(255) NOT NULL DEFAULT '',
   `estado` varchar(255) NOT NULL DEFAULT '',
   `data_cadastro` varchar(255) NOT NULL DEFAULT '',
+  `contato` varchar(255) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   KEY `idx_cpf` (`cpf`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
