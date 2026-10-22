@@ -29,7 +29,7 @@
     <section class="filtros-barra">
       <div class="busca-campo">
         <span data-icon="search"></span>
-        <input type="search" id="filtro-busca" placeholder="Pesquisar por nome, CPF, local ou cargo...">
+        <input type="search" id="filtro-busca" placeholder="Pesquisar por nome, CPF, contato, local ou cargo...">
       </div>
       <div class="filtro-grupo">
         <label for="filtro-secretaria">Secretaria</label>
@@ -44,6 +44,16 @@
           <option value="40">40 horas</option>
           <option value="30">30 horas</option>
           <option value="20">20 horas</option>
+        </select>
+      </div>
+      <div class="filtro-grupo">
+        <label for="filtro-termo">Termo de adesão</label>
+        <select id="filtro-termo">
+          <option value="">Todos</option>
+          <option value="termo-assinado">Termo assinado</option>
+          <option value="termo-pendente">Termo pendente</option>
+          <option value="renovacao-assinada">Renovação assinada</option>
+          <option value="renovacao-pendente">Renovação pendente</option>
         </select>
       </div>
       <div class="filtro-grupo">
@@ -89,6 +99,9 @@
       <a class="btn" href="cadastro.html">Adicionar voluntário</a>
     </div>
   </main>
+
+  <!-- Prévia do voluntário (lado direito). Preenchida por js/voluntarios.js -->
+  <aside class="previa" id="previa" aria-label="Prévia do voluntário" hidden></aside>
 
   <script src="js/app.js"></script>
   <script src="js/voluntarios.js"></script>

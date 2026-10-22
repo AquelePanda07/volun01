@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Termos de Adesão — Sistema de Gestão de Voluntários</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script>try { if (localStorage.getItem('sgv_tema') === 'dark') document.documentElement.dataset.theme = 'dark'; } catch (e) {}</script>
+</head>
+<body data-titulo="Termos de Adesão">
+  <main class="page-content">
+    <div class="page-header">
+      <div>
+        <h1>Termos de Adesão</h1>
+        <p class="page-header__subtitulo">Anexe os termos assinados e marque quem está com o contrato e a renovação assinados</p>
+      </div>
+    </div>
+
+    <div class="termos-resumo" id="termos-resumo"></div>
+
+    <section class="filtros-barra">
+      <div class="busca-campo">
+        <span data-icon="search"></span>
+        <input type="search" id="filtro-busca" placeholder="Pesquisar por nome, CPF, local ou cargo...">
+      </div>
+      <div class="filtro-grupo">
+        <label for="filtro-status">Status do contrato</label>
+        <select id="filtro-status">
+          <option value="">Todos</option>
+          <option value="ATIVO">Ativo</option>
+          <option value="A_INICIAR">A Iniciar</option>
+          <option value="ENCERRADO">Encerrado</option>
+        </select>
+      </div>
+    </section>
+
+    <div class="lista-topo">
+      <div class="chips" id="filtro-situacao" role="group" aria-label="Filtrar pela situação do termo"></div>
+      <span class="contador-resultados" id="contador-resultados"></span>
+    </div>
+
+    <div class="termos-lista" id="termos-lista">
+      <!-- Preenchido por js/termos.js -->
+    </div>
+
+    <div class="estado-vazio" id="estado-vazio" hidden>
+      <span data-icon="fileCheck"></span>
+      <p id="estado-vazio-texto">Nenhum voluntário cadastrado ainda.</p>
+    </div>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script src="js/termos.js"></script>
+</body>
+</html>

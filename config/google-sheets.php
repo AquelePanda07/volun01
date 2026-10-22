@@ -63,10 +63,14 @@ return [
             'Dias Semana', 'Secretaria', 'Nome Secretario', 'Status', 'Data Cadastro',
             // Renovação do contrato (ver ContratoService::renovar()).
             'Renovado', 'Data Renovacao', 'Termino Anterior',
+            // Termo de Adesão assinado (anexo + marcação), do contrato e da renovação.
+            'Anexo Termo', 'Termo Assinado', 'Data Assinatura Termo',
+            'Anexo Renovacao', 'Renovacao Assinada', 'Data Assinatura Renovacao',
         ],
         'Cargos' => ['ID', 'Nome', 'Ativo'],
         'Secretarias' => ['ID', 'Nome', 'Sigla', 'Ativo'],
-        'Locais' => ['ID', 'Nome', 'Endereco', 'Ativo'],
+        // Responsável que certifica o Quadro de Frequência dos voluntários desta lotação.
+        'Locais' => ['ID', 'Nome', 'Endereco', 'Ativo', 'Responsavel', 'Cargo Responsavel', 'Ato Nomeacao', 'Ocultar Lotacao'],
         'Secretarios' => ['ID', 'ID Secretaria', 'Nome', 'Ativo'],
         // "Usuario Responsavel" é um acréscimo do sistema (não está na lista
         // original da especificação) para manter o histórico de quem gerou

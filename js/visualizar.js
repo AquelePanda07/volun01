@@ -5,14 +5,6 @@
  * editar/excluir/voltar, além do histórico de Termos de Adesão gerados.
  */
 
-const DIAS_SEMANA_NOMES = {
-  SEG: 'Segunda-feira', TER: 'Terça-feira', QUA: 'Quarta-feira', QUI: 'Quinta-feira',
-  SEX: 'Sexta-feira', SAB: 'Sábado', DOM: 'Domingo',
-};
-
-const SEXO_LABEL = { masculino: 'Masculino', feminino: 'Feminino', outro: 'Outro', nao_informar: 'Prefiro não informar' };
-const ESTADO_CIVIL_LABEL = { solteiro: 'Solteiro(a)', casado: 'Casado(a)', divorciado: 'Divorciado(a)', viuvo: 'Viúvo(a)', uniao_estavel: 'União estável' };
-
 let VOLUNTARIO_ATUAL = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -40,20 +32,8 @@ function renderizarNaoEncontrado() {
   `;
 }
 
-function formatarDiasSemanaExibicao(diasSemanaCsv) {
-  if (!diasSemanaCsv) return '-';
-  return diasSemanaCsv.split(',').map(c => DIAS_SEMANA_NOMES[c.trim()] || c.trim()).join(', ');
-}
-
 function item(rotulo, valor, classe = '') {
   return `<div class="detalhe-item ${classe}"><b>${rotulo}</b><span>${valor}</span></div>`;
-}
-
-/** Telefone com link para ligar e para abrir no WhatsApp (DDI 55). */
-function htmlContato(contato) {
-  const digitos = (contato || '').replace(/\D/g, '');
-  if (!digitos) return '-';
-  return `<a href="tel:+55${digitos}">${escapeHtml(contato)}</a> · <a href="https://wa.me/55${digitos}" target="_blank" rel="noopener">WhatsApp</a>`;
 }
 
 /** Barra com o quanto do contrato já foi cumprido. */
@@ -144,6 +124,11 @@ function renderizarVoluntario(v) {
         ${item('Secretaria', escapeHtml(v.secretaria || '-'))}
         ${item('Nome do Secretário', escapeHtml(v.nomeSecretario || '-'))}
       </div>
+    </section>
+
+    <section class="form-secao">
+      <h2 class="form-secao__titulo">${icon('fileCheck')} Termo de Adesão assinado</h2>
+      <div id="area-termos-assinados">${htmlResumoTermos(v)}</div>
     </section>
 
     <section class="form-secao">

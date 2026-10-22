@@ -25,8 +25,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     showToast(erro.message || 'Não foi possível carregar os voluntários.', 'erro');
   }
 
+  popularFiltroLotacao();
   renderizarGrupos();
   document.getElementById('filtro-busca').addEventListener('input', renderizarGrupos);
+  document.getElementById('filtro-lotacao').addEventListener('change', renderizarGrupos);
   document.getElementById('filtro-status').addEventListener('change', renderizarGrupos);
   document.getElementById('btn-alternar-grupos').addEventListener('click', alternarTodosGrupos);
 });
@@ -40,11 +42,35 @@ function renderizarCarregando() {
   `).join('');
 }
 
+const SEM_LOTACAO = '__sem_lotacao__';
+
+/** Lotações (locais de prestação) existentes, em ordem alfabética, com a quantidade de voluntários. */
+function popularFiltroLotacao() {
+  const contagem = new Map();
+  let semLotacao = 0;
+  TODOS_VOLUNTARIOS.forEach(v => {
+    const local = (v.localPrestacao || '').trim();
+    if (local) contagem.set(local, (contagem.get(local) || 0) + 1);
+    else semLotacao++;
+  });
+  const select = document.getElementById('filtro-lotacao');
+  const opcoes = [...contagem.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0], 'pt-BR', { sensitivity: 'base' }))
+    .map(([local, qtd]) => `<option value="${escapeHtml(local)}">${escapeHtml(local)} (${qtd})</option>`);
+  if (semLotacao) opcoes.push(`<option value="${SEM_LOTACAO}">Sem lotação informada (${semLotacao})</option>`);
+  select.insertAdjacentHTML('beforeend', opcoes.join(''));
+}
+
 function filtrar() {
   const termo = document.getElementById('filtro-busca').value.trim().toLowerCase();
   const status = document.getElementById('filtro-status').value;
+  const lotacao = document.getElementById('filtro-lotacao').value;
   return TODOS_VOLUNTARIOS.filter(v => {
     if (status && v.status !== status) return false;
+    if (lotacao) {
+      const local = (v.localPrestacao || '').trim();
+      if (lotacao === SEM_LOTACAO ? local !== '' : local !== lotacao) return false;
+    }
     if (termo) {
       const alvo = [v.nome, v.cpf, v.localPrestacao, v.cargo].join(' ').toLowerCase();
       if (!alvo.includes(termo)) return false;
@@ -110,7 +136,7 @@ function renderizarGrupos() {
               <a class="cargo-membro" href="visualizar.html?id=${encodeURIComponent(v.id)}">
                 <img class="avatar-mini" src="${fotoOuAvatar(v)}" alt="">
                 <div class="cargo-membro__info">
-                  <strong>${escapeHtml(v.nome)}${seloRenovado(v)}</strong>
+                  <strong>${escapeHtml(v.nome)}${seloRenovado(v)}${seloTermos(v)}</strong>
                   <span>${icon('mapPin')} ${escapeHtml(v.localPrestacao || '-')}</span>
                 </div>
                 <span class="cargo-membro__prazo">${v.status === 'ATIVO' ? `Termina em ${formatarDataBR(v.dataTermino)}` : ''}</span>

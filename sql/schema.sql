@@ -40,6 +40,12 @@ CREATE TABLE IF NOT EXISTS `contratos` (
   `renovado` varchar(255) NOT NULL DEFAULT '',
   `data_renovacao` varchar(255) NOT NULL DEFAULT '',
   `termino_anterior` varchar(255) NOT NULL DEFAULT '',
+  `anexo_termo` varchar(255) NOT NULL DEFAULT '',
+  `termo_assinado` varchar(255) NOT NULL DEFAULT '',
+  `data_assinatura_termo` varchar(255) NOT NULL DEFAULT '',
+  `anexo_renovacao` varchar(255) NOT NULL DEFAULT '',
+  `renovacao_assinada` varchar(255) NOT NULL DEFAULT '',
+  `data_assinatura_renovacao` varchar(255) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   KEY `idx_id_voluntario` (`id_voluntario`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -60,6 +66,10 @@ CREATE TABLE IF NOT EXISTS `locais` (
   `nome` varchar(255) NOT NULL DEFAULT '',
   `endereco` varchar(255) NOT NULL DEFAULT '',
   `ativo` varchar(255) NOT NULL DEFAULT '',
+  `responsavel` varchar(255) NOT NULL DEFAULT '',
+  `cargo_responsavel` varchar(255) NOT NULL DEFAULT '',
+  `ato_nomeacao` varchar(255) NOT NULL DEFAULT '',
+  `ocultar_lotacao` varchar(255) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE IF NOT EXISTS `secretarias` (

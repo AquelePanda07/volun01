@@ -112,7 +112,7 @@ function renderizarPrazos(voluntarios) {
       <a class="prazo-item" href="visualizar.html?id=${encodeURIComponent(v.id)}">
         <img class="avatar-mini" src="${fotoOuAvatar(v)}" alt="">
         <div class="prazo-item__info">
-          <strong>${escapeHtml(v.nome)}${seloRenovado(v)}</strong>
+          <strong>${escapeHtml(v.nome)}${seloRenovado(v)}${seloTermos(v)}</strong>
           <span>${escapeHtml(v.localPrestacao || '-')} · termina em ${formatarDataBR(v.dataTermino)}</span>
         </div>
         <span class="pill-dias ${classePrazo(v.diasRestantes)}">${escapeHtml(formatarDiasRestantes(v.diasRestantes, v.status))}</span>

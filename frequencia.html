@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quadro de Frequência — Sistema de Gestão de Voluntários</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script>try { if (localStorage.getItem('sgv_tema') === 'dark') document.documentElement.dataset.theme = 'dark'; } catch (e) {}</script>
+</head>
+<body data-titulo="Quadro de Frequência">
+  <main class="page-content">
+    <div class="page-header">
+      <div>
+        <h1>Quadro de Frequência</h1>
+        <p class="page-header__subtitulo">Relatório e recibo mensal de atividades dos voluntários — vários voluntários no mesmo documento Word</p>
+      </div>
+    </div>
+
+    <div class="freq-grid">
+      <!-- Configuração do mês -->
+      <div class="freq-config">
+        <section class="form-secao">
+          <h2 class="form-secao__titulo"><span data-icon="calendar"></span> Período</h2>
+          <div class="freq-linha">
+            <div class="campo">
+              <label for="freq-mes">Mês</label>
+              <select id="freq-mes"></select>
+            </div>
+            <div class="campo">
+              <label for="freq-ano">Ano</label>
+              <input type="number" id="freq-ano" min="2000" max="2100">
+            </div>
+            <div class="campo">
+              <label for="freq-ate-dia">Até o dia</label>
+              <input type="number" id="freq-ate-dia" min="1" max="31" placeholder="Fim do mês">
+            </div>
+          </div>
+          <small class="freq-dica">Os dias saem automaticamente: só os dias da semana do contrato de cada voluntário, dentro do período do contrato.</small>
+        </section>
+
+        <section class="form-secao">
+          <h2 class="form-secao__titulo"><span data-icon="alert"></span> Feriados e pontos facultativos</h2>
+          <p class="freq-dica freq-dica--topo">Aparecem na coluna "Rubrica" do dia (o dia continua listado, como no modelo).</p>
+          <div id="freq-ocorrencias" class="freq-ocorrencias"></div>
+          <div class="freq-botoes">
+            <button type="button" class="btn btn--outline btn--sm" id="btn-add-ocorrencia"><span data-icon="plus"></span> Adicionar data</button>
+            <button type="button" class="btn btn--outline btn--sm" id="btn-feriados"><span data-icon="calendar"></span> Feriados nacionais e de RO</button>
+          </div>
+          <datalist id="freq-rotulos">
+            <option value="FERIADO"></option>
+            <option value="PONTO FACULTATIVO"></option>
+            <option value="RECESSO ESCOLAR"></option>
+            <option value="FALTA"></option>
+            <option value="ATESTADO"></option>
+          </datalist>
+        </section>
+
+        <section class="form-secao" id="secao-descricoes" hidden>
+          <h2 class="form-secao__titulo"><span data-icon="briefcase"></span> Atividades realizadas</h2>
+          <p class="freq-dica freq-dica--topo">Texto da coluna "Atividades Realizadas – Turma", por cargo. Em branco, usa o nome do cargo.</p>
+          <div id="freq-descricoes" class="freq-lista-campos"></div>
+        </section>
+
+        <section class="form-secao" id="secao-responsaveis" hidden>
+          <h2 class="form-secao__titulo"><span data-icon="user"></span> Quem certifica (por lotação)</h2>
+          <p class="freq-dica freq-dica--topo">Fica salvo no cadastro do local. Sem responsável, assina o(a) Secretário(a) informado(a) no contrato.</p>
+          <div id="freq-responsaveis" class="freq-lista-campos"></div>
+        </section>
+
+        <section class="form-secao">
+          <h2 class="form-secao__titulo"><span data-icon="file"></span> Recibo e datas</h2>
+          <div class="freq-linha">
+            <div class="campo">
+              <label for="freq-valor">Valor (R$)</label>
+              <input type="text" id="freq-valor" inputmode="decimal" placeholder="Em branco = linha para preencher">
+            </div>
+          </div>
+          <div class="freq-linha">
+            <div class="campo">
+              <label for="freq-data-voluntario">Data da assinatura do voluntário</label>
+              <input type="date" id="freq-data-voluntario">
+            </div>
+            <div class="campo">
+              <label for="freq-data-certificacao">Data da certificação</label>
+              <input type="date" id="freq-data-certificacao">
+            </div>
+          </div>
+          <small class="freq-dica">Valor e datas em branco saem como linhas para preenchimento à mão. O valor por extenso é escrito automaticamente.</small>
+        </section>
+      </div>
+
+      <!-- Seleção dos voluntários -->
+      <section class="form-secao freq-voluntarios">
+        <h2 class="form-secao__titulo"><span data-icon="users"></span> Voluntários</h2>
+        <div class="freq-filtros">
+          <div class="busca-campo">
+            <span data-icon="search"></span>
+            <input type="search" id="freq-busca" placeholder="Pesquisar por nome, CPF ou cargo...">
+          </div>
+          <select id="freq-lotacao" aria-label="Filtrar por lotação">
+            <option value="">Todas as lotações</option>
+          </select>
+          <select id="freq-ordem" aria-label="Ordem no documento">
+            <option value="nome">Ordem: nome</option>
+            <option value="lotacao">Ordem: lotação e nome</option>
+          </select>
+        </div>
+        <label class="freq-todos">
+          <input type="checkbox" id="freq-selecionar-todos">
+          <span>Selecionar todos os listados</span>
+          <span class="contador-resultados" id="freq-contador"></span>
+        </label>
+        <ul class="freq-lista" id="freq-lista"></ul>
+      </section>
+    </div>
+
+    <div class="freq-barra">
+      <span id="freq-resumo">Nenhum voluntário selecionado</span>
+      <button type="button" class="btn" id="btn-gerar-frequencia" disabled><span data-icon="download"></span> Gerar Word</button>
+    </div>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script src="js/frequencia.js"></script>
+</body>
+</html>

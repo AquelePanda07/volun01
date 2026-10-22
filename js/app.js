@@ -38,6 +38,12 @@ const ICONS = {
   download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>',
   refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>',
   repeat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>',
+  fileCheck: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><polyline points="9 15 11 17 15 13"></polyline></svg>',
+  upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>',
+  paperclip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>',
+  maximize: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>',
+  minimize: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
   save: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>',
   menu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>',
   camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>',
@@ -362,8 +368,172 @@ function abrirModalRenovacao(v, aoRenovar) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Termo de Adesão assinado (anexo + marcação de assinado)             */
+/* Só é possível marcar como assinado depois de anexar o termo.        */
+/* ------------------------------------------------------------------ */
+const TERMOS_ASSINADOS = {
+  termo: { titulo: 'Termo do contrato', anexo: 'anexoTermo', assinado: 'termoAssinado', data: 'dataAssinaturaTermo' },
+  renovacao: { titulo: 'Termo da renovação', anexo: 'anexoRenovacao', assinado: 'renovacaoAssinada', data: 'dataAssinaturaRenovacao' },
+};
+const TAMANHO_MAXIMO_ANEXO_MB = 10;
+
+async function acaoTermoAssinado(acao, corpo) {
+  return apiFetch(`contratos.php?acao=${acao}`, { method: 'POST', body: JSON.stringify(corpo) });
+}
+
+function urlAnexoTermo(idVoluntario, tipo, baixar = false) {
+  const query = new URLSearchParams({ acao: 'anexo', id_voluntario: idVoluntario, tipo });
+  if (baixar) query.set('baixar', '1');
+  return `${API_BASE}contratos.php?${query.toString()}`;
+}
+
+/** Ícones compactos de termo assinado (contrato e/ou renovação), para listas. */
+function seloTermos(v) {
+  let html = '';
+  if (v.termoAssinado) {
+    html += `<span class="selo-termo" title="Termo assinado (marcado em ${formatarDataBR(v.dataAssinaturaTermo)})" aria-label="Termo assinado">${icon('fileCheck')}</span>`;
+  }
+  if (v.renovado && v.renovacaoAssinada) {
+    html += `<span class="selo-termo selo-termo--renovacao" title="Renovação assinada (marcada em ${formatarDataBR(v.dataAssinaturaRenovacao)})" aria-label="Renovação assinada">${icon('fileCheck')}</span>`;
+  }
+  return html;
+}
+
+/** Cartões "Termo do contrato" e (se renovado) "Termo da renovação". */
+function htmlTermosAssinados(v) {
+  const tipos = v.renovado ? ['termo', 'renovacao'] : ['termo'];
+  return `<div class="termos-assinados">${tipos.map(tipo => {
+    const cfg = TERMOS_ASSINADOS[tipo];
+    const anexo = v[cfg.anexo];
+    const assinado = Boolean(v[cfg.assinado]);
+    const estado = assinado ? 'assinado' : (anexo ? 'anexado' : 'pendente');
+    const textoEstado = {
+      assinado: `Assinado · marcado em ${formatarDataBR(v[cfg.data])}`,
+      anexado: 'Anexado · falta marcar como assinado',
+      pendente: 'Pendente · nenhum termo assinado anexado',
+    }[estado];
+    const idCheck = `termo-assinado-${tipo}-${v.id}`;
+    return `
+      <div class="termo-card termo-card--${estado}" data-tipo-termo="${tipo}">
+        <div class="termo-card__topo">
+          <span class="termo-card__icone">${icon(assinado ? 'fileCheck' : 'file')}</span>
+          <div class="termo-card__titulo">
+            <strong>${cfg.titulo}</strong>
+            <span>${escapeHtml(textoEstado)}</span>
+          </div>
+        </div>
+        ${anexo ? `
+          <div class="termo-card__arquivo">
+            ${icon('paperclip')}
+            <a href="${urlAnexoTermo(v.id, tipo)}" target="_blank" rel="noopener">Ver anexo</a>
+            <span aria-hidden="true">·</span>
+            <a href="${urlAnexoTermo(v.id, tipo, true)}" download>Baixar</a>
+          </div>` : ''}
+        <div class="termo-card__acoes">
+          <label class="btn btn--outline btn--sm">
+            ${icon('upload')} ${anexo ? 'Substituir anexo' : 'Anexar termo assinado'}
+            <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" data-termo-arquivo hidden>
+          </label>
+          ${anexo ? `<button type="button" class="btn btn--danger-suave btn--sm" data-termo-remover>${icon('trash')} Remover</button>` : ''}
+        </div>
+        <label class="termo-card__check${anexo ? '' : ' termo-card__check--bloqueado'}" for="${idCheck}">
+          <input type="checkbox" id="${idCheck}" data-termo-assinado ${assinado ? 'checked' : ''} ${anexo ? '' : 'disabled'}>
+          <span>${tipo === 'termo' ? 'Termo assinado' : 'Renovação assinada'}</span>
+        </label>
+        ${anexo ? '' : '<small class="termo-card__dica">Anexe o termo assinado (PDF ou foto) para poder marcar.</small>'}
+      </div>`;
+  }).join('')}</div>`;
+}
+
+/** Resumo somente leitura da situação dos termos, com link para a página "Termos de Adesão". */
+function htmlResumoTermos(v) {
+  const tipos = v.renovado ? ['termo', 'renovacao'] : ['termo'];
+  const itens = tipos.map(tipo => {
+    const cfg = TERMOS_ASSINADOS[tipo];
+    const anexo = v[cfg.anexo];
+    if (v[cfg.assinado]) {
+      return `<span class="badge badge--sucesso">${icon('fileCheck')}${cfg.titulo}: assinado em ${formatarDataBR(v[cfg.data])}</span>`;
+    }
+    return anexo
+      ? `<span class="badge badge--info">${icon('paperclip')}${cfg.titulo}: anexado, falta marcar</span>`
+      : `<span class="badge badge--alerta">${icon('file')}${cfg.titulo}: pendente</span>`;
+  }).join('');
+  return `
+    <div class="termos-resumo-perfil">
+      <div class="termos-resumo-perfil__selos">${itens}</div>
+      <a class="btn btn--outline btn--sm" href="termos.html?id=${encodeURIComponent(v.id)}">${icon('fileCheck')} Anexar / marcar em Termos de Adesão</a>
+    </div>`;
+}
+
+/** Liga os eventos dos cartões de htmlTermosAssinados(). aoAtualizar recebe o voluntário atualizado. */
+function ligarTermosAssinados(raiz, v, aoAtualizar) {
+  const executar = async (cartao, acao, corpo) => {
+    cartao.classList.add('termo-card--ocupado');
+    cartao.querySelectorAll('input, button').forEach(el => { el.disabled = true; });
+    try {
+      const resposta = await acaoTermoAssinado(acao, { idVoluntario: v.id, tipo: cartao.dataset.tipoTermo, ...corpo });
+      showToast(resposta.mensagem, 'sucesso');
+      aoAtualizar(resposta.dados);
+    } catch (erro) {
+      showToast(erro.message || 'Não foi possível atualizar o termo.', 'erro');
+      aoAtualizar(v); // redesenha no estado anterior
+    }
+  };
+
+  raiz.querySelectorAll('.termo-card').forEach(cartao => {
+    cartao.querySelector('[data-termo-arquivo]').addEventListener('change', (e) => {
+      const arquivo = e.target.files[0];
+      if (!arquivo) return;
+      if (arquivo.size > TAMANHO_MAXIMO_ANEXO_MB * 1024 * 1024) {
+        showToast(`O arquivo não pode passar de ${TAMANHO_MAXIMO_ANEXO_MB} MB.`, 'erro');
+        e.target.value = '';
+        return;
+      }
+      const leitor = new FileReader();
+      leitor.onload = () => executar(cartao, 'anexar', { arquivo: leitor.result });
+      leitor.onerror = () => showToast('Não foi possível ler o arquivo.', 'erro');
+      leitor.readAsDataURL(arquivo);
+    });
+
+    cartao.querySelector('[data-termo-assinado]').addEventListener('change', (e) => {
+      executar(cartao, 'assinado', { assinado: e.target.checked });
+    });
+
+    const remover = cartao.querySelector('[data-termo-remover]');
+    if (remover) {
+      remover.addEventListener('click', () => showConfirm({
+        titulo: 'Remover anexo',
+        mensagem: 'O arquivo anexado será apagado e o termo deixará de constar como assinado. Deseja continuar?',
+        textoConfirmar: 'Remover',
+        onConfirm: () => executar(cartao, 'remover_anexo', {}),
+      }));
+    }
+  });
+}
+
+/* ------------------------------------------------------------------ */
 /* Formatação                                                           */
 /* ------------------------------------------------------------------ */
+const DIAS_SEMANA_NOMES = {
+  SEG: 'Segunda-feira', TER: 'Terça-feira', QUA: 'Quarta-feira', QUI: 'Quinta-feira',
+  SEX: 'Sexta-feira', SAB: 'Sábado', DOM: 'Domingo',
+};
+
+const SEXO_LABEL = { masculino: 'Masculino', feminino: 'Feminino', outro: 'Outro', nao_informar: 'Prefiro não informar' };
+const ESTADO_CIVIL_LABEL = { solteiro: 'Solteiro(a)', casado: 'Casado(a)', divorciado: 'Divorciado(a)', viuvo: 'Viúvo(a)', uniao_estavel: 'União estável' };
+
+function formatarDiasSemanaExibicao(diasSemanaCsv) {
+  if (!diasSemanaCsv) return '-';
+  return diasSemanaCsv.split(',').map(c => DIAS_SEMANA_NOMES[c.trim()] || c.trim()).join(', ');
+}
+
+/** Telefone com link para ligar e para abrir no WhatsApp (DDI 55). */
+function htmlContato(contato) {
+  const digitos = (contato || '').replace(/\D/g, '');
+  if (!digitos) return '-';
+  return `<a href="tel:+55${digitos}">${escapeHtml(contato)}</a> · <a href="https://wa.me/55${digitos}" target="_blank" rel="noopener">WhatsApp</a>`;
+}
+
 function formatarDataBR(iso) {
   if (!iso) return '-';
   const [ano, mes, dia] = iso.split('-');
@@ -559,6 +729,8 @@ function consumirFlashMessage() {
 const NAV_LINKS = [
   { href: 'index.html', icone: 'home', texto: 'Início' },
   { href: 'voluntarios.html', icone: 'users', texto: 'Voluntários' },
+  { href: 'termos.html', icone: 'fileCheck', texto: 'Termos de Adesão' },
+  { href: 'frequencia.html', icone: 'calendar', texto: 'Quadro de Frequência' },
   { href: 'por-cargo.html', icone: 'briefcase', texto: 'Por Cargo' },
   { href: 'cadastro.html', icone: 'plus', texto: 'Adicionar Voluntário' },
 ];

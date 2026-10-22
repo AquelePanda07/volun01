@@ -4,6 +4,8 @@
 /documentos/termos/*
 !/documentos/termos/.gitkeep
 /documentos/lotes/
+/documentos/assinados/
+/documentos/frequencia/
 /config/credentials/*.json
 /logs/*
 !/logs/.gitkeep

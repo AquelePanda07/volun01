@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('filtro-busca').addEventListener('input', renderizarLista);
   document.getElementById('filtro-secretaria').addEventListener('change', renderizarLista);
   document.getElementById('filtro-carga').addEventListener('change', renderizarLista);
+  document.getElementById('filtro-termo').addEventListener('change', renderizarLista);
   document.getElementById('filtro-ordem').addEventListener('change', renderizarLista);
   document.getElementById('filtro-status').addEventListener('click', (e) => {
     const chip = e.target.closest('[data-status]');
@@ -29,6 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderizarLista();
   });
   document.getElementById('btn-termos-lote').addEventListener('click', abrirModalTermosLote);
+  configurarPrevia();
 });
 
 function renderizarCarregando() {
@@ -57,6 +59,7 @@ async function recarregarVoluntarios() {
   [...SELECIONADOS].forEach(id => { if (!idsExistentes.has(id)) SELECIONADOS.delete(id); });
   popularFiltroSecretarias();
   renderizarLista();
+  if (PREVIA_ID) renderizarPrevia(); // ex.: após renovar, mostra os dados novos
 }
 
 function popularFiltroSecretarias() {
@@ -78,6 +81,7 @@ function filtrarSemStatus() {
   const termo = document.getElementById('filtro-busca').value.trim().toLowerCase();
   const secretaria = document.getElementById('filtro-secretaria').value;
   const carga = document.getElementById('filtro-carga').value;
+  const filtroTermo = document.getElementById('filtro-termo').value;
 
   return TODOS_VOLUNTARIOS.filter(v => {
     if (termo) {
@@ -86,8 +90,20 @@ function filtrarSemStatus() {
     }
     if (secretaria && v.secretaria !== secretaria) return false;
     if (carga && String(v.cargaHoraria) !== String(carga)) return false;
+    if (filtroTermo && !atendeFiltroTermo(v, filtroTermo)) return false;
     return true;
   });
+}
+
+/** Filtro "Termo de adesão": assinado/pendente do contrato ou da renovação. */
+function atendeFiltroTermo(v, filtro) {
+  switch (filtro) {
+    case 'termo-assinado': return Boolean(v.termoAssinado);
+    case 'termo-pendente': return !v.termoAssinado;
+    case 'renovacao-assinada': return Boolean(v.renovado && v.renovacaoAssinada);
+    case 'renovacao-pendente': return Boolean(v.renovado && !v.renovacaoAssinada);
+    default: return true;
+  }
 }
 
 function filtrarVoluntarios() {
@@ -182,7 +198,8 @@ function renderizarLista() {
 
     // Linha da tabela (telas grandes)
     const tr = document.createElement('tr');
-    tr.className = 'animar-entrada';
+    tr.className = `animar-entrada linha-clicavel${String(v.id) === PREVIA_ID ? ' linha--selecionada' : ''}`;
+    tr.dataset.previa = v.id;
     tr.setAttribute('style', `--i:${i};${destaquePrazo}`);
     tr.innerHTML = `
       <td class="col-selecao"><input type="checkbox" data-selecionar="${v.id}" ${marcado} aria-label="Selecionar ${escapeHtml(v.nome)}"></td>
@@ -190,7 +207,7 @@ function renderizarLista() {
         <a class="pessoa-cel" href="visualizar.html?id=${id}">
           <img class="avatar-mini" src="${foto}" alt="">
           <div class="pessoa-cel__info">
-            <strong>${escapeHtml(v.nome)}</strong>
+            <strong>${escapeHtml(v.nome)}${seloTermos(v)}</strong>
             <span>${escapeHtml(v.cargo || '-')}</span>
           </div>
         </a>
@@ -213,14 +230,15 @@ function renderizarLista() {
 
     // Card (telas pequenas)
     const card = document.createElement('div');
-    card.className = 'voluntario-card animar-entrada';
+    card.className = `voluntario-card animar-entrada linha-clicavel${String(v.id) === PREVIA_ID ? ' linha--selecionada' : ''}`;
+    card.dataset.previa = v.id;
     card.setAttribute('style', `--i:${i};${destaquePrazo}`);
     card.innerHTML = `
       <div class="voluntario-card__topo">
         <input type="checkbox" data-selecionar="${v.id}" ${marcado} aria-label="Selecionar ${escapeHtml(v.nome)}">
         <img class="avatar-mini" src="${foto}" alt="">
         <div class="voluntario-card__info">
-          <strong>${escapeHtml(v.nome)}${seloRenovado(v)}</strong>
+          <strong>${escapeHtml(v.nome)}${seloRenovado(v)}${seloTermos(v)}</strong>
           <span>${escapeHtml(v.cargo || '-')} · ${escapeHtml(v.localPrestacao || '-')}</span>
         </div>
         ${badgeStatus(status)}
@@ -381,4 +399,178 @@ function mostrarFalhasLote(falhas, totalGerados) {
       </div>
     </div>
   `);
+}
+
+/* ------------------------------------------------------------------ */
+/* Prévia do voluntário (painel do lado direito, com tela cheia)        */
+/* ------------------------------------------------------------------ */
+let PREVIA_ID = null;
+
+function configurarPrevia() {
+  // Clique na linha/card (ou no nome) abre a prévia; botões, links de ação e
+  // caixas de seleção continuam funcionando normalmente. Ctrl/⌘ + clique no
+  // nome ainda abre a página completa em outra aba.
+  document.querySelector('.main-area').addEventListener('click', (e) => {
+    const alvo = e.target.closest('[data-previa]');
+    if (!alvo) return;
+    const linkNome = e.target.closest('.pessoa-cel');
+    if (linkNome) {
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+      e.preventDefault();
+    } else if (e.target.closest('a, button, input, label')) {
+      return;
+    }
+    abrirPrevia(alvo.dataset.previa);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !PREVIA_ID || document.querySelector('.modal-overlay')) return;
+    if (document.getElementById('previa').classList.contains('previa--cheia')) alternarTelaCheia(false);
+    else fecharPrevia();
+  });
+
+  // Clique fora da prévia (e fora das linhas da lista) fecha a prévia.
+  document.addEventListener('click', (e) => {
+    if (!PREVIA_ID) return;
+    if (e.target.closest('#previa, [data-previa], .modal-overlay, .toast-container')) return;
+    if (!e.target.isConnected) return; // elemento redesenhado durante o clique
+    fecharPrevia();
+  });
+}
+
+function abrirPrevia(id) {
+  PREVIA_ID = String(id);
+  const painel = document.getElementById('previa');
+  painel.hidden = false;
+  document.body.classList.add('com-previa');
+  requestAnimationFrame(() => painel.classList.add('previa--aberta'));
+  renderizarPrevia();
+  marcarLinhaSelecionada();
+}
+
+function fecharPrevia() {
+  const painel = document.getElementById('previa');
+  PREVIA_ID = null;
+  painel.classList.remove('previa--aberta', 'previa--cheia');
+  document.body.classList.remove('com-previa', 'previa-tela-cheia');
+  marcarLinhaSelecionada();
+  setTimeout(() => { if (!PREVIA_ID) painel.hidden = true; }, 250);
+}
+
+/** Expande a prévia para a tela inteira (ou volta ao painel lateral). */
+function alternarTelaCheia(ativar) {
+  const painel = document.getElementById('previa');
+  const cheia = painel.classList.toggle('previa--cheia', ativar);
+  document.body.classList.toggle('previa-tela-cheia', cheia);
+  atualizarBotaoTelaCheia(painel.querySelector('[data-previa-acao="tela-cheia"]'), cheia);
+}
+
+function atualizarBotaoTelaCheia(botao, cheia) {
+  botao.innerHTML = icon(cheia ? 'minimize' : 'maximize');
+  botao.title = cheia ? 'Sair da tela cheia (Esc)' : 'Visualizar em tela cheia';
+  botao.setAttribute('aria-label', botao.title);
+  botao.setAttribute('aria-pressed', String(cheia));
+}
+
+function marcarLinhaSelecionada() {
+  document.querySelectorAll('[data-previa]').forEach(el => {
+    el.classList.toggle('linha--selecionada', el.dataset.previa === PREVIA_ID);
+  });
+}
+
+function renderizarPrevia() {
+  const painel = document.getElementById('previa');
+  const v = TODOS_VOLUNTARIOS.find(x => String(x.id) === PREVIA_ID);
+  if (!v) { fecharPrevia(); return; } // voluntário não existe mais (ex.: excluído)
+
+  const status = calcularStatusContrato(v.dataInicio, v.dataTermino);
+  const dias = calcularDiasRestantes(v.dataTermino);
+  const progresso = calcularProgressoContrato(v.dataInicio, v.dataTermino);
+  const idade = calcularIdade(v.dataNascimento);
+  const id = encodeURIComponent(v.id);
+  const item = (rotulo, valor, classe = '') => `<div class="detalhe-item ${classe}"><b>${rotulo}</b><span>${valor}</span></div>`;
+  const endereco = [v.logradouro, v.numero ? `nº ${v.numero}` : '', v.complemento].filter(Boolean).join(', ')
+    + (v.bairro ? ` - ${v.bairro}` : '') + (v.cidade ? `, ${v.cidade}` : '') + (v.estado ? `/${v.estado}` : '')
+    + (v.cep ? ` — CEP ${v.cep}` : '');
+  const descricaoPrazo = status === 'A_INICIAR'
+    ? `Começa em ${formatarDataBR(v.dataInicio)}`
+    : (status === 'ENCERRADO' ? 'Contrato encerrado' : `${formatarDiasRestantes(dias, status)} para o término`);
+  const classeBarra = status === 'ENCERRADO' ? 'progresso__barra--perigo' : (dias !== null && dias <= 30 ? 'progresso__barra--alerta' : '');
+
+  painel.innerHTML = `
+    <div class="previa__barra">
+      <span class="previa__titulo">${icon('eye')} Prévia do voluntário</span>
+      <div class="previa__controles">
+        <button type="button" class="btn btn--outline btn--sm btn--icon-only" data-previa-acao="tela-cheia"></button>
+        <button type="button" class="btn btn--outline btn--sm btn--icon-only" data-previa-acao="fechar" title="Fechar (Esc)" aria-label="Fechar prévia">${icon('x')}</button>
+      </div>
+    </div>
+
+    <div class="previa__corpo">
+      <div class="previa__perfil">
+        <img class="previa__foto" src="${fotoOuAvatar(v)}" alt="Foto de ${escapeHtml(v.nome)}">
+        <div class="previa__perfil-info">
+          <h2>${escapeHtml(v.nome)}</h2>
+          <div class="previa__selos">${badgeStatus(status)}${badgeRenovado(v)}</div>
+          <span class="previa__sub">${icon('briefcase')} ${escapeHtml(v.cargo || '-')}</span>
+          <span class="previa__sub">${icon('mapPin')} ${escapeHtml(v.localPrestacao || '-')}</span>
+        </div>
+      </div>
+
+      ${progresso === null ? '' : `
+        <div class="progresso-contrato previa__progresso">
+          <div class="progresso-contrato__topo">
+            <span>${formatarDataBR(v.dataInicio)} → ${formatarDataBR(v.dataTermino)}</span>
+            <span><b>${progresso}%</b> · ${escapeHtml(descricaoPrazo)}</span>
+          </div>
+          <div class="progresso"><div class="progresso__barra ${classeBarra}" style="width:${progresso}%"></div></div>
+        </div>`}
+
+      <div class="previa__acoes">
+        ${podeRenovarContrato(v) ? `<button type="button" class="btn btn--outline btn--renovar btn--sm" data-previa-acao="renovar">${icon('repeat')} Renovar</button>` : ''}
+        <a class="btn btn--sm" href="visualizar.html?id=${id}">${icon('arrowRight')} Página completa</a>
+        <a class="btn btn--outline btn--sm" href="cadastro.html?id=${id}">${icon('edit')} Editar</a>
+        <a class="btn btn--outline btn--sm" href="gerar-termo.html?id=${id}">${icon('file')} Termo</a>
+      </div>
+
+      <section class="previa__secao">
+        <h3>${icon('user')} Dados pessoais</h3>
+        <div class="detalhe-grid">
+          ${item('CPF', escapeHtml(v.cpf || '-'))}
+          ${item('Contato', htmlContato(v.contato))}
+          ${item('RG', escapeHtml([v.rg, v.rgOrgaoExpedidor].filter(Boolean).join(' — ') || '-'))}
+          ${item('Nascimento', `${formatarDataBR(v.dataNascimento)}${idade === '' ? '' : ` (${idade} anos)`}`)}
+          ${item('Sexo', escapeHtml(SEXO_LABEL[v.sexo] || v.sexo || '-'))}
+          ${item('Estado civil', escapeHtml(ESTADO_CIVIL_LABEL[v.estadoCivil] || v.estadoCivil || '-'))}
+          ${item('Escolaridade', escapeHtml(v.escolaridade || '-'), 'detalhe-item--full')}
+          ${item('Endereço', escapeHtml(endereco || '-'), 'detalhe-item--full')}
+        </div>
+      </section>
+
+      <section class="previa__secao">
+        <h3>${icon('briefcase')} Prestação de serviço</h3>
+        <div class="detalhe-grid">
+          ${item('Carga horária', v.cargaHoraria ? `${escapeHtml(v.cargaHoraria)} horas` : '-')}
+          ${item('Horário', `${escapeHtml((v.horarioInicio || '-').slice(0, 5))} às ${escapeHtml((v.horarioTermino || '-').slice(0, 5))}`)}
+          ${item('Dias da semana', escapeHtml(formatarDiasSemanaExibicao(v.diasSemana)), 'detalhe-item--full')}
+          ${item('Secretaria', escapeHtml(v.secretaria || '-'), 'detalhe-item--full')}
+          ${item('Secretário(a)', escapeHtml(v.nomeSecretario || '-'), 'detalhe-item--full')}
+          ${v.renovado ? item('Renovação', `Renovado em ${formatarDataBR(v.dataRenovacao)} · término anterior: ${formatarDataBR(v.terminoAnterior)}`, 'detalhe-item--full') : ''}
+        </div>
+      </section>
+
+      <section class="previa__secao" id="previa-termos">
+        <h3>${icon('fileCheck')} Termo de Adesão assinado</h3>
+        ${htmlResumoTermos(v)}
+      </section>
+    </div>
+  `;
+
+
+  const botaoTelaCheia = painel.querySelector('[data-previa-acao="tela-cheia"]');
+  atualizarBotaoTelaCheia(botaoTelaCheia, painel.classList.contains('previa--cheia'));
+  botaoTelaCheia.addEventListener('click', () => alternarTelaCheia());
+  painel.querySelector('[data-previa-acao="fechar"]').addEventListener('click', fecharPrevia);
+  const botaoRenovar = painel.querySelector('[data-previa-acao="renovar"]');
+  if (botaoRenovar) botaoRenovar.addEventListener('click', () => abrirModalRenovacao(v, recarregarVoluntarios));
 }

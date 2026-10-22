@@ -21,6 +21,7 @@ require_once __DIR__ . '/services/ListaSimplesService.php';
 require_once __DIR__ . '/src/VoluntarioRepository.php';
 require_once __DIR__ . '/src/DocumentoRepository.php';
 require_once __DIR__ . '/src/TermoAdesaoService.php';
+require_once __DIR__ . '/src/QuadroFrequenciaService.php';
 
 /**
  * Armazenamento de dados usado por todo o sistema (instância única por

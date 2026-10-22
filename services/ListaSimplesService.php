@@ -14,6 +14,9 @@ declare(strict_types=1);
 
 class ListaSimplesService
 {
+    /** Colunas da aba "Locais" (o responsável é usado no Quadro de Frequência). */
+    public const COLUNAS_LOCAIS = ['Nome', 'Endereco', 'Responsavel', 'Cargo Responsavel', 'Ato Nomeacao', 'Ocultar Lotacao'];
+
     private RepositorioDados $dados;
 
     /** Entidade lógica ('cargos', 'secretarias', 'locais', 'secretarios'). */
