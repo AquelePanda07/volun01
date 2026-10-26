@@ -1,7 +1,7 @@
 /**
  * voluntarios.js
  * Lógica da página "Voluntários Cadastrados": listagem, pesquisa em tempo
- * real, filtros (status, secretaria, carga horária), exclusão com
+ * real, filtros (status, secretaria, escola, carga horária), exclusão com
  * confirmação e geração de Termos de Adesão em lote.
  */
 
@@ -15,7 +15,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   await recarregarVoluntarios();
 
   document.getElementById('filtro-busca').addEventListener('input', renderizarLista);
-  document.getElementById('filtro-secretaria').addEventListener('change', renderizarLista);
+  document.getElementById('filtro-secretaria').addEventListener('change', () => {
+    popularFiltroLocais(); // as escolas listadas dependem da secretaria escolhida
+    renderizarLista();
+  });
+  document.getElementById('filtro-local').addEventListener('change', renderizarLista);
   document.getElementById('filtro-carga').addEventListener('change', renderizarLista);
   document.getElementById('filtro-termo').addEventListener('change', renderizarLista);
   document.getElementById('filtro-ordem').addEventListener('change', renderizarLista);
@@ -58,6 +62,7 @@ async function recarregarVoluntarios() {
   const idsExistentes = new Set(TODOS_VOLUNTARIOS.map(v => String(v.id)));
   [...SELECIONADOS].forEach(id => { if (!idsExistentes.has(id)) SELECIONADOS.delete(id); });
   popularFiltroSecretarias();
+  popularFiltroLocais();
   renderizarLista();
   if (PREVIA_ID) renderizarPrevia(); // ex.: após renovar, mostra os dados novos
 }
@@ -76,10 +81,32 @@ function popularFiltroSecretarias() {
   select.value = valorAtual;
 }
 
-/** Aplica busca, secretaria e carga horária (tudo menos o status). */
+/** Escolas/locais de prestação, limitados à secretaria selecionada (se houver). */
+function popularFiltroLocais() {
+  const select = document.getElementById('filtro-local');
+  const valorAtual = select.value;
+  const secretaria = document.getElementById('filtro-secretaria').value;
+  select.querySelectorAll('option:not([value=""])').forEach(o => o.remove());
+  const locais = [...new Set(TODOS_VOLUNTARIOS
+    .filter(v => !secretaria || v.secretaria === secretaria)
+    .map(v => (v.localPrestacao || '').trim())
+    .filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+  locais.forEach(local => {
+    const opt = document.createElement('option');
+    opt.value = local;
+    opt.textContent = local;
+    select.appendChild(opt);
+  });
+  // Mantém a escolha se ela ainda existir na nova lista; senão volta para "Todos".
+  select.value = locais.includes(valorAtual) ? valorAtual : '';
+}
+
+/** Aplica busca, secretaria, escola e carga horária (tudo menos o status). */
 function filtrarSemStatus() {
   const termo = document.getElementById('filtro-busca').value.trim().toLowerCase();
   const secretaria = document.getElementById('filtro-secretaria').value;
+  const local = document.getElementById('filtro-local').value;
   const carga = document.getElementById('filtro-carga').value;
   const filtroTermo = document.getElementById('filtro-termo').value;
 
@@ -89,6 +116,7 @@ function filtrarSemStatus() {
       if (!alvo.includes(termo)) return false;
     }
     if (secretaria && v.secretaria !== secretaria) return false;
+    if (local && (v.localPrestacao || '').trim() !== local) return false;
     if (carga && String(v.cargaHoraria) !== String(carga)) return false;
     if (filtroTermo && !atendeFiltroTermo(v, filtroTermo)) return false;
     return true;
@@ -106,25 +134,37 @@ function atendeFiltroTermo(v, filtro) {
   }
 }
 
+/** Chips de renovação, ao lado dos de status: quem pode renovar e quem já renovou. */
+const FILTROS_RENOVACAO = {
+  PARA_RENOVAR: { texto: 'Para renovar', filtro: podeRenovarContrato },
+  RENOVADO: { texto: 'Renovados', filtro: v => Boolean(v.renovado) },
+};
+
+function atendeFiltroStatus(v, filtro) {
+  if (!filtro) return true;
+  if (FILTROS_RENOVACAO[filtro]) return FILTROS_RENOVACAO[filtro].filtro(v);
+  return calcularStatusContrato(v.dataInicio, v.dataTermino) === filtro;
+}
+
 function filtrarVoluntarios() {
   return filtrarSemStatus()
-    .filter(v => !FILTRO_STATUS || calcularStatusContrato(v.dataInicio, v.dataTermino) === FILTRO_STATUS)
+    .filter(v => atendeFiltroStatus(v, FILTRO_STATUS))
     .sort(compararVoluntarios(document.getElementById('filtro-ordem').value));
 }
 
-/** Chips de status com a quantidade de cada um (considerando os demais filtros). */
+/** Chips de status e de renovação com a quantidade de cada um (considerando os demais filtros). */
 function renderizarChipsStatus() {
   const base = filtrarSemStatus();
-  const contar = status => base.filter(v => calcularStatusContrato(v.dataInicio, v.dataTermino) === status).length;
-  const chips = [
-    { status: '', texto: 'Todos', qtd: base.length },
-    ...['ATIVO', 'A_INICIAR', 'ENCERRADO'].map(s => ({ status: s, texto: STATUS_LABEL[s], qtd: contar(s) })),
-  ];
-  document.getElementById('filtro-status').innerHTML = chips.map(c => `
-    <button type="button" class="chip${c.status === FILTRO_STATUS ? ' chip--ativo' : ''}" data-status="${c.status}" aria-pressed="${c.status === FILTRO_STATUS}">
-      ${c.texto} <span class="chip__contador">${c.qtd}</span>
-    </button>
-  `).join('');
+  const contar = status => base.filter(v => atendeFiltroStatus(v, status)).length;
+  const chip = (status, texto, classe = '') => `
+    <button type="button" class="chip${classe}${status === FILTRO_STATUS ? ' chip--ativo' : ''}" data-status="${status}" aria-pressed="${status === FILTRO_STATUS}">
+      ${texto} <span class="chip__contador">${status ? contar(status) : base.length}</span>
+    </button>`;
+  document.getElementById('filtro-status').innerHTML =
+    chip('', 'Todos') +
+    ['ATIVO', 'A_INICIAR', 'ENCERRADO'].map(s => chip(s, STATUS_LABEL[s])).join('') +
+    '<span class="chips__divisor" aria-hidden="true"></span>' +
+    Object.entries(FILTROS_RENOVACAO).map(([s, f]) => chip(s, `${icon('repeat')}${f.texto}`, ' chip--renovacao')).join('');
 }
 
 /**
@@ -218,11 +258,11 @@ function renderizarLista() {
       <td>${badgeStatus(status)}${badgeRenovado(v)}</td>
       <td>
         <div class="acoes-cel">
-          ${renovavel ? `<button class="btn btn--outline btn--renovar btn--sm btn--icon-only" data-renovar="${v.id}" title="Marcar contrato como renovado">${icon('repeat')}</button>` : ''}
-          <a class="btn btn--outline btn--sm btn--icon-only" href="visualizar.html?id=${id}" title="Visualizar">${icon('eye')}</a>
-          <a class="btn btn--outline btn--sm btn--icon-only" href="cadastro.html?id=${id}" title="Editar">${icon('edit')}</a>
-          <a class="btn btn--outline btn--sm btn--icon-only" href="gerar-termo.html?id=${id}" title="Gerar Termo de Adesão">${icon('file')}</a>
-          <button class="btn btn--danger-suave btn--sm btn--icon-only" data-excluir="${v.id}" title="Excluir">${icon('trash')}</button>
+          ${renovavel ? `<button class="btn btn--outline btn--renovar btn--sm btn--icon-only" data-renovar="${v.id}" data-dica="Renovar contrato" aria-label="Renovar contrato de ${escapeHtml(v.nome)}">${icon('repeat')}</button>` : ''}
+          <a class="btn btn--outline btn--sm btn--icon-only" href="visualizar.html?id=${id}" data-dica="Visualizar" aria-label="Visualizar ${escapeHtml(v.nome)}">${icon('eye')}</a>
+          <a class="btn btn--outline btn--sm btn--icon-only" href="cadastro.html?id=${id}" data-dica="Editar" aria-label="Editar ${escapeHtml(v.nome)}">${icon('edit')}</a>
+          <a class="btn btn--outline btn--sm btn--icon-only" href="gerar-termo.html?id=${id}" data-dica="Gerar Termo de Adesão" aria-label="Gerar Termo de Adesão de ${escapeHtml(v.nome)}">${icon('file')}</a>
+          <button class="btn btn--danger-suave btn--sm btn--icon-only" data-excluir="${v.id}" data-dica="Excluir" aria-label="Excluir ${escapeHtml(v.nome)}">${icon('trash')}</button>
         </div>
       </td>
     `;
@@ -520,7 +560,7 @@ function renderizarPrevia() {
       ${progresso === null ? '' : `
         <div class="progresso-contrato previa__progresso">
           <div class="progresso-contrato__topo">
-            <span>${formatarDataBR(v.dataInicio)} → ${formatarDataBR(v.dataTermino)}</span>
+            <span>${formatarPeriodoBR(v.dataInicio, v.dataTermino)}</span>
             <span><b>${progresso}%</b> · ${escapeHtml(descricaoPrazo)}</span>
           </div>
           <div class="progresso"><div class="progresso__barra ${classeBarra}" style="width:${progresso}%"></div></div>
@@ -551,7 +591,7 @@ function renderizarPrevia() {
         <h3>${icon('briefcase')} Prestação de serviço</h3>
         <div class="detalhe-grid">
           ${item('Carga horária', v.cargaHoraria ? `${escapeHtml(v.cargaHoraria)} horas` : '-')}
-          ${item('Horário', `${escapeHtml((v.horarioInicio || '-').slice(0, 5))} às ${escapeHtml((v.horarioTermino || '-').slice(0, 5))}`)}
+          ${item('Horário', escapeHtml(formatarHorario(v.horarioInicio, v.horarioTermino)))}
           ${item('Dias da semana', escapeHtml(formatarDiasSemanaExibicao(v.diasSemana)), 'detalhe-item--full')}
           ${item('Secretaria', escapeHtml(v.secretaria || '-'), 'detalhe-item--full')}
           ${item('Secretário(a)', escapeHtml(v.nomeSecretario || '-'), 'detalhe-item--full')}

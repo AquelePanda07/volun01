@@ -316,22 +316,59 @@ function somarDiasISO(iso, dias) {
 }
 
 /**
- * Modal "Marcar como renovado": pede a nova data de término (até 6 meses
- * após o término atual) e chama aoRenovar(voluntarioAtualizado) no sucesso.
+ * Modal "Marcar como renovado": pede a nova data de término, contando os
+ * 6 meses a partir do término atual ou a partir de hoje (à escolha), e chama
+ * aoRenovar(voluntarioAtualizado) no sucesso.
  */
 function abrirModalRenovacao(v, aoRenovar) {
-  const minimo = [somarDiasISO(v.dataTermino, 1), hojeISO()].sort().pop();
-  const maximo = somarMesesISO(v.dataTermino, 6);
+  const hoje = hojeISO();
+  const opcoes = {
+    termino: { minimo: somarDiasISO(v.dataTermino, 1), maximo: somarMesesISO(v.dataTermino, 6) },
+    hoje: { minimo: [somarDiasISO(v.dataTermino, 1), hoje].sort().pop(), maximo: somarMesesISO(hoje, 6) },
+  };
+  // Contrato já encerrado: por padrão, conta a partir de hoje.
+  const padrao = v.dataTermino < hoje ? 'hoje' : 'termino';
+  let { minimo, maximo } = opcoes[padrao];
   let salvando = false;
+
+  const dias = calcularDiasRestantes(v.dataTermino);
+  const situacao = dias < 0
+    ? `<span class="renovacao-atual__situacao renovacao-atual__situacao--vencido">${icon('alert')}Encerrado há ${-dias} ${-dias === 1 ? 'dia' : 'dias'}</span>`
+    : `<span class="renovacao-atual__situacao">${icon('clock')}${dias === 0 ? 'Termina hoje' : `Faltam ${dias} ${dias === 1 ? 'dia' : 'dias'}`}</span>`;
+
+  const opcao = (chave, titulo, base) => `
+    <label class="opcao-renovacao">
+      <input type="radio" name="renovacao-base" value="${chave}" ${chave === padrao ? 'checked' : ''}>
+      <span class="opcao-renovacao__titulo">${titulo}</span>
+      <span class="opcao-renovacao__data">${formatarDataBR(opcoes[chave].maximo)}</span>
+      <span class="opcao-renovacao__conta">${formatarDataBR(base)} + 6 meses</span>
+      ${opcoes[chave].maximo < hoje ? `<span class="opcao-renovacao__aviso">${icon('alert')}Já vencida — continua encerrado</span>` : ''}
+    </label>`;
 
   const { overlay, fechar } = abrirModal(`
     <div class="modal-box modal-box--medio" role="dialog" aria-modal="true" aria-labelledby="renovacao-titulo">
       <h3 id="renovacao-titulo">${icon('repeat')} Renovar contrato</h3>
-      <p>O contrato de <b>${escapeHtml(v.nome)}</b> termina em <b>${formatarDataBR(v.dataTermino)}</b>. Ao marcar como renovado, a data de término é prorrogada e o voluntário passa a exibir o selo <span class="badge badge--renovado">${icon('repeat')}Renovado</span>.</p>
+      <div class="renovacao-atual">
+        <div>
+          <span class="renovacao-atual__nome">${escapeHtml(v.nome)}</span>
+          <span class="texto-suave">Término atual: <b>${formatarDataBR(v.dataTermino)}</b></span>
+        </div>
+        ${situacao}
+      </div>
+      <p class="renovacao-pergunta">Contar os 6 meses a partir de:</p>
+      <div class="opcoes-renovacao" role="radiogroup" aria-label="Contar a renovação a partir de">
+        ${opcao('termino', 'Do término do contrato', v.dataTermino)}
+        ${opcao('hoje', 'De hoje', hoje)}
+      </div>
       <div class="campo">
         <label for="renovacao-termino">Nova data de término</label>
         <input type="date" id="renovacao-termino" value="${maximo}" min="${minimo}" max="${maximo}" required>
-        <small class="texto-suave">Até 6 meses após o término atual (máximo ${formatarDataBR(maximo)}).</small>
+        <small class="texto-suave" id="renovacao-dica"></small>
+      </div>
+      <div class="renovacao-resumo">
+        <span>${formatarDataBR(v.dataTermino)}</span>
+        ${icon('arrowRight')}
+        <b id="renovacao-resumo-nova"></b>
       </div>
       <div class="modal-acoes">
         <button type="button" class="btn btn--outline" data-fechar>Cancelar</button>
@@ -342,6 +379,21 @@ function abrirModalRenovacao(v, aoRenovar) {
 
   const campo = overlay.querySelector('#renovacao-termino');
   const botao = overlay.querySelector('[data-acao="renovar"]');
+  const atualizarResumo = () => {
+    overlay.querySelector('#renovacao-dica').textContent = `Pode ser ajustada entre ${formatarDataBR(minimo)} e ${formatarDataBR(maximo)}.`;
+    overlay.querySelector('#renovacao-resumo-nova').textContent = campo.value ? formatarDataBR(campo.value) : '—';
+  };
+  overlay.querySelectorAll('[name="renovacao-base"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      ({ minimo, maximo } = opcoes[radio.value]);
+      campo.min = minimo;
+      campo.max = maximo;
+      campo.value = maximo;
+      atualizarResumo();
+    });
+  });
+  campo.addEventListener('input', atualizarResumo);
+  atualizarResumo();
   campo.focus();
   botao.addEventListener('click', async () => {
     const novaData = campo.value;
@@ -512,6 +564,196 @@ function ligarTermosAssinados(raiz, v, aoAtualizar) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Documentos pessoais: um arquivo único por voluntário (ex.: um PDF   */
+/* com todos juntos) + a lista do que ele contém (AnexoService.php).   */
+/* ------------------------------------------------------------------ */
+const TIPOS_DOCUMENTO = {
+  rg: 'RG',
+  cpf: 'CPF',
+  comprovante_luz: 'Comprovante de Luz',
+  historico_escolar: 'Histórico Escolar',
+  certidao_negativa: 'Certidão Negativa',
+};
+const DOCUMENTOS_ESPERADOS = Object.keys(TIPOS_DOCUMENTO);
+const TAMANHO_MAXIMO_DOCUMENTOS_MB = 20;
+
+/** Sem id: o arquivo de todos os voluntários que têm um. Com id: o do voluntário (ou null). */
+async function listarAnexos(idVoluntario) {
+  const query = idVoluntario ? `?id_voluntario=${encodeURIComponent(idVoluntario)}` : '';
+  return (await apiFetch(`anexos.php${query}`)).dados;
+}
+
+async function acaoAnexo(acao, corpo) {
+  return apiFetch(`anexos.php?acao=${acao}`, { method: 'POST', body: JSON.stringify(corpo) });
+}
+
+function urlArquivoAnexo(idVoluntario, baixar = false) {
+  return `${API_BASE}anexos.php?acao=arquivo&id_voluntario=${encodeURIComponent(idVoluntario)}${baixar ? '&baixar=1' : ''}`;
+}
+
+function formatarTamanhoArquivo(bytes) {
+  if (!bytes) return '';
+  return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1).replace('.', ',')} MB`;
+}
+
+/** Documentos marcados como presentes no arquivo do voluntário. */
+function documentosEntregues(anexo) {
+  return anexo ? DOCUMENTOS_ESPERADOS.filter(t => anexo.documentos.includes(t)) : [];
+}
+
+/** Selos compactos (✓/pendente) de cada documento, para listas. */
+function htmlSelosDocumentos(anexo) {
+  const entregues = new Set(documentosEntregues(anexo));
+  return `<div class="docs-selos">${DOCUMENTOS_ESPERADOS.map(t => `
+    <span class="docs-selo${entregues.has(t) ? ' docs-selo--ok' : ''}" title="${TIPOS_DOCUMENTO[t]}: ${entregues.has(t) ? 'no arquivo' : 'pendente'}">
+      ${icon(entregues.has(t) ? 'checkCircle' : 'file')}${TIPOS_DOCUMENTO[t]}
+    </span>`).join('')}</div>`;
+}
+
+/**
+ * O arquivo do voluntário (ou a área para anexar) e a lista do que ele contém.
+ * As marcações não são salvas a cada clique: ficam pendentes (anexo.pendente)
+ * até o botão "Salvar" ou, com salvarAoFechar, até fechar o modal.
+ */
+function htmlDocumentosVoluntario(anexo, { salvarAoFechar = false } = {}) {
+  const entregues = documentosEntregues(anexo);
+  const completo = entregues.length === DOCUMENTOS_ESPERADOS.length;
+  const entrada = `<input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" data-docs-arquivo hidden>`;
+
+  const arquivo = anexo ? `
+    <div class="docs-arquivo-unico">
+      <span class="docs-arquivo-unico__icone">${icon('file')}</span>
+      <div class="docs-arquivo-unico__info">
+        <a href="${urlArquivoAnexo(anexo.idVoluntario)}" target="_blank" rel="noopener">${escapeHtml(anexo.nomeOriginal)}</a>
+        <small>Enviado em ${formatarDataBR(anexo.dataEnvio.slice(0, 10))}${anexo.tamanho ? ` · ${formatarTamanhoArquivo(anexo.tamanho)}` : ''}</small>
+      </div>
+      <div class="docs-arquivo-unico__acoes">
+        <a class="btn btn--outline btn--sm" href="${urlArquivoAnexo(anexo.idVoluntario)}" target="_blank" rel="noopener">${icon('eye')} Abrir</a>
+        <a class="btn btn--outline btn--sm" href="${urlArquivoAnexo(anexo.idVoluntario, true)}" download>${icon('download')} Baixar</a>
+        <label class="btn btn--outline btn--sm">${icon('upload')} Substituir${entrada}</label>
+        <button type="button" class="btn btn--danger-suave btn--sm btn--icon-only" data-docs-remover aria-label="Remover arquivo" data-dica="Remover">${icon('trash')}</button>
+      </div>
+    </div>` : `
+    <label class="anexo-soltar" data-docs-soltar>
+      ${icon('upload')}
+      <span><b>Clique para escolher</b> ou arraste o arquivo aqui</span>
+      <small>Um único arquivo com todos os documentos · PDF ou foto (JPG, PNG, WEBP) · até ${TAMANHO_MAXIMO_DOCUMENTOS_MB} MB</small>
+      ${entrada}
+    </label>`;
+
+  return `
+    <div class="docs-voluntario${anexo ? '' : ' docs-voluntario--sem-arquivo'}">
+      ${arquivo}
+      <div class="docs-checklist">
+        <div class="docs-checklist__topo">
+          <strong>O arquivo contém:</strong>
+          <span class="docs-voluntario__progresso${completo ? ' docs-voluntario__progresso--completo' : ''}">
+            ${icon(completo ? 'checkCircle' : 'file')}<b>${entregues.length} de ${DOCUMENTOS_ESPERADOS.length}</b> documentos
+          </span>
+        </div>
+        ${anexo && anexo.pendente ? `
+          <div class="docs-pendente">
+            ${icon('alert')}
+            ${salvarAoFechar
+              ? '<span>Alterações não salvas — serão salvas ao fechar esta janela.</span>'
+              : `<span>Alterações não salvas.</span><button type="button" class="btn btn--sm" data-docs-salvar>${icon('save')} Salvar</button>`}
+          </div>` : ''}
+        <div class="docs-checklist__itens">
+          ${DOCUMENTOS_ESPERADOS.map(t => `
+            <label class="docs-check${anexo ? '' : ' docs-check--bloqueado'}">
+              <input type="checkbox" value="${t}" data-docs-item ${entregues.includes(t) ? 'checked' : ''} ${anexo ? '' : 'disabled'}>
+              <span>${TIPOS_DOCUMENTO[t]}</span>
+            </label>`).join('')}
+        </div>
+        ${anexo
+          ? (salvarAoFechar && !anexo.pendente ? '<small class="termo-card__dica">Marque à vontade: as alterações são salvas ao fechar esta janela.</small>' : '')
+          : '<small class="termo-card__dica">Anexe o arquivo para poder marcar os documentos que ele contém.</small>'}
+      </div>
+    </div>`;
+}
+
+/** Grava as marcações pendentes do anexo. Devolve o anexo salvo. */
+async function salvarMarcacoesDocumentos(v, anexo) {
+  const resposta = await acaoAnexo('documentos', { idVoluntario: v.id, documentos: anexo.documentos });
+  return resposta.dados;
+}
+
+/**
+ * Liga os controles de htmlDocumentosVoluntario(). aoAtualizar recebe o
+ * novo estado do arquivo do voluntário (null depois de remover) — inclusive
+ * marcações ainda não salvas, com pendente: true.
+ */
+function ligarDocumentosVoluntario(raiz, v, anexo, aoAtualizar) {
+  const executar = async (acao, corpo, mensagemErro) => {
+    raiz.querySelectorAll('input, button').forEach(el => { el.disabled = true; });
+    // Vai no bloco (que é redesenhado por aoAtualizar), não na raiz — senão a raiz ficaria bloqueada para sempre.
+    raiz.querySelector('.docs-voluntario').classList.add('docs-voluntario--ocupado');
+    try {
+      const resposta = await acaoAnexo(acao, { idVoluntario: v.id, ...corpo });
+      let dados = resposta.dados;
+      // Trocar o arquivo com marcações pendentes: grava as marcações junto, para não perdê-las.
+      if (acao === 'anexar' && anexo && anexo.pendente) dados = await salvarMarcacoesDocumentos(v, anexo);
+      showToast(resposta.mensagem, 'sucesso');
+      aoAtualizar(dados);
+    } catch (erro) {
+      showToast(erro.message || mensagemErro, 'erro');
+      aoAtualizar(anexo); // redesenha no estado anterior
+    }
+  };
+
+  const enviar = (arquivo) => {
+    if (!arquivo) return;
+    if (arquivo.size > TAMANHO_MAXIMO_DOCUMENTOS_MB * 1024 * 1024) {
+      showToast(`O arquivo não pode passar de ${TAMANHO_MAXIMO_DOCUMENTOS_MB} MB.`, 'erro');
+      return;
+    }
+    const leitor = new FileReader();
+    leitor.onload = () => executar('anexar', { nomeOriginal: arquivo.name, arquivo: leitor.result }, 'Não foi possível anexar o arquivo.');
+    leitor.onerror = () => showToast('Não foi possível ler o arquivo.', 'erro');
+    leitor.readAsDataURL(arquivo);
+  };
+
+  raiz.querySelector('[data-docs-arquivo]').addEventListener('change', (e) => enviar(e.target.files[0]));
+
+  const soltar = raiz.querySelector('[data-docs-soltar]');
+  if (soltar) {
+    soltar.addEventListener('dragover', (e) => { e.preventDefault(); soltar.classList.add('anexo-soltar--ativo'); });
+    soltar.addEventListener('dragleave', () => soltar.classList.remove('anexo-soltar--ativo'));
+    soltar.addEventListener('drop', (e) => {
+      e.preventDefault();
+      soltar.classList.remove('anexo-soltar--ativo');
+      if (e.dataTransfer.files.length > 1) showToast('Envie um único arquivo com todos os documentos.', 'erro');
+      else enviar(e.dataTransfer.files[0]);
+    });
+  }
+
+  // Marcar/desmarcar só muda a tela; a gravação é feita depois, de uma vez.
+  raiz.querySelectorAll('[data-docs-item]').forEach(caixa => {
+    caixa.addEventListener('change', () => {
+      const marcados = [...raiz.querySelectorAll('[data-docs-item]:checked')].map(c => c.value);
+      const salvos = anexo.documentosSalvos || anexo.documentos;
+      const iguais = marcados.length === salvos.length && marcados.every(t => salvos.includes(t));
+      aoAtualizar({ ...anexo, documentos: marcados, documentosSalvos: salvos, pendente: !iguais });
+    });
+  });
+
+  const salvar = raiz.querySelector('[data-docs-salvar]');
+  if (salvar) {
+    salvar.addEventListener('click', () => executar('documentos', { documentos: anexo.documentos }, 'Não foi possível salvar a lista de documentos.'));
+  }
+
+  const remover = raiz.querySelector('[data-docs-remover]');
+  if (remover) {
+    remover.addEventListener('click', () => showConfirm({
+      titulo: 'Remover arquivo',
+      mensagem: 'O arquivo com os documentos será apagado e a lista do que ele contém será desmarcada. Deseja continuar?',
+      textoConfirmar: 'Remover',
+      onConfirm: () => executar('remover', {}, 'Não foi possível remover o arquivo.'),
+    }));
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Formatação                                                           */
 /* ------------------------------------------------------------------ */
 const DIAS_SEMANA_NOMES = {
@@ -539,6 +781,18 @@ function formatarDataBR(iso) {
   const [ano, mes, dia] = iso.split('-');
   if (!ano || !mes || !dia) return iso;
   return `${dia}/${mes}/${ano}`;
+}
+
+/** "01/10/2026 → 01/04/2027", deixando claro quando uma das datas falta. */
+function formatarPeriodoBR(inicio, termino) {
+  if (!inicio && !termino) return 'Período não informado';
+  return `${inicio ? formatarDataBR(inicio) : 'Início não informado'} → ${termino ? formatarDataBR(termino) : 'término não informado'}`;
+}
+
+/** "07:00 às 11:00", ou "Não informado" quando não há horário cadastrado. */
+function formatarHorario(inicio, termino) {
+  if (!inicio && !termino) return 'Não informado';
+  return `${(inicio || '?').slice(0, 5)} às ${(termino || '?').slice(0, 5)}`;
 }
 
 function escapeHtml(str) {
@@ -661,7 +915,8 @@ function abrirModal(conteudoHtml, { classe = '', podeFechar = () => true } = {})
     setTimeout(() => overlay.remove(), 200);
   }
   function aoTeclar(e) {
-    if (e.key === 'Escape') fechar();
+    // Com modais empilhados (ex.: "Anexar documento" sobre a lista), Esc fecha só o de cima.
+    if (e.key === 'Escape' && overlay === [...document.querySelectorAll('.modal-overlay')].pop()) fechar();
   }
 
   overlay.addEventListener('click', (e) => { if (e.target === overlay) fechar(); });
@@ -730,6 +985,7 @@ const NAV_LINKS = [
   { href: 'index.html', icone: 'home', texto: 'Início' },
   { href: 'voluntarios.html', icone: 'users', texto: 'Voluntários' },
   { href: 'termos.html', icone: 'fileCheck', texto: 'Termos de Adesão' },
+  { href: 'documentos.html', icone: 'paperclip', texto: 'Documentos' },
   { href: 'frequencia.html', icone: 'calendar', texto: 'Quadro de Frequência' },
   { href: 'por-cargo.html', icone: 'briefcase', texto: 'Por Cargo' },
   { href: 'cadastro.html', icone: 'plus', texto: 'Adicionar Voluntário' },

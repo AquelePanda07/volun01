@@ -44,6 +44,7 @@ return [
         'locais' => 'Locais',
         'secretarios' => 'Secretarios',
         'documentos' => 'Documentos',
+        'anexos' => 'Anexos',
     ],
 
     // Colunas (cabeçalho da linha 1) de cada aba, na ordem exigida pela
@@ -78,6 +79,13 @@ return [
         'Documentos' => [
             'ID', 'ID Voluntario', 'Tipo Documento', 'Nome Arquivo', 'Caminho Arquivo',
             'Versao', 'Usuario Responsavel', 'Data Geracao',
+        ],
+        // Arquivo único com os documentos pessoais do voluntário (RG, CPF, comprovantes...),
+        // uma linha por voluntário. "Documentos" lista (separados por vírgula) quais estão
+        // dentro do arquivo. O arquivo fica em documentos/pessoais/ e é servido por api/anexos.php.
+        'Anexos' => [
+            'ID', 'ID Voluntario', 'Documentos', 'Nome Original', 'Caminho Arquivo',
+            'Tamanho', 'Data Envio',
         ],
     ],
 ];

@@ -61,6 +61,17 @@ CREATE TABLE IF NOT EXISTS `documentos` (
   PRIMARY KEY (`id`),
   KEY `idx_id_voluntario` (`id_voluntario`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS `anexos` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `id_voluntario` varchar(255) NOT NULL DEFAULT '',
+  `documentos` varchar(255) NOT NULL DEFAULT '',
+  `nome_original` varchar(255) NOT NULL DEFAULT '',
+  `caminho_arquivo` varchar(255) NOT NULL DEFAULT '',
+  `tamanho` varchar(255) NOT NULL DEFAULT '',
+  `data_envio` varchar(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  KEY `idx_id_voluntario` (`id_voluntario`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE IF NOT EXISTS `locais` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `nome` varchar(255) NOT NULL DEFAULT '',

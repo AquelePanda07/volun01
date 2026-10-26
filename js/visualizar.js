@@ -20,7 +20,39 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.title = `${voluntario.nome} — Sistema de Gestão de Voluntários`;
   renderizarVoluntario(voluntario);
   carregarHistoricoDocumentos(voluntario.id);
+  carregarDocumentosPessoais();
+  if (location.hash === '#documentos') {
+    document.getElementById('secao-docs-pessoais').scrollIntoView({ behavior: 'smooth' });
+  }
 });
+
+/* ------------------------------------------------------------------ */
+/* Documentos pessoais anexados (RG, CPF, comprovantes...)              */
+/* ------------------------------------------------------------------ */
+let ANEXO_ATUAL = null;
+
+// Marcações de documentos ainda não salvas: avisa antes de sair da página.
+window.addEventListener('beforeunload', (e) => {
+  if (ANEXO_ATUAL && ANEXO_ATUAL.pendente) e.preventDefault();
+});
+
+async function carregarDocumentosPessoais() {
+  try {
+    ANEXO_ATUAL = await listarAnexos(VOLUNTARIO_ATUAL.id);
+    renderizarDocumentosPessoais();
+  } catch (erro) {
+    document.getElementById('area-docs-pessoais').innerHTML = '<p class="texto-suave">Não foi possível carregar os documentos.</p>';
+  }
+}
+
+function renderizarDocumentosPessoais() {
+  const area = document.getElementById('area-docs-pessoais');
+  area.innerHTML = htmlDocumentosVoluntario(ANEXO_ATUAL);
+  ligarDocumentosVoluntario(area, VOLUNTARIO_ATUAL, ANEXO_ATUAL, (novo) => {
+    ANEXO_ATUAL = novo;
+    renderizarDocumentosPessoais();
+  });
+}
 
 function renderizarNaoEncontrado() {
   document.getElementById('area-dados').innerHTML = `
@@ -49,7 +81,7 @@ function htmlProgressoContrato(v, status) {
   return `
     <div class="progresso-contrato">
       <div class="progresso-contrato__topo">
-        <span>${formatarDataBR(v.dataInicio)} → ${formatarDataBR(v.dataTermino)}</span>
+        <span>${formatarPeriodoBR(v.dataInicio, v.dataTermino)}</span>
         <span><b>${progresso}%</b> concluído · ${escapeHtml(descricao)}</span>
       </div>
       <div class="progresso" role="progressbar" aria-valuenow="${progresso}" aria-valuemin="0" aria-valuemax="100">
@@ -106,23 +138,37 @@ function renderizarVoluntario(v) {
         ${item('Grau de escolaridade', escapeHtml(v.escolaridade || '-'))}
         ${item('Estado civil', escapeHtml(ESTADO_CIVIL_LABEL[v.estadoCivil] || v.estadoCivil || '-'))}
         ${item('Contato', htmlContato(v.contato))}
+        ${item('Endereço completo', escapeHtml(endereco || '-'), 'detalhe-item--full')}
       </div>
     </section>
 
     <section class="form-secao">
       <h2 class="form-secao__titulo">${icon('briefcase')} Dados da Prestação de Serviço</h2>
       <div class="detalhe-grid">
-        ${item('Carga horária', `${escapeHtml(v.cargaHoraria)} horas`)}
         ${item('Cargo', escapeHtml(v.cargo || '-'))}
-        ${item('Endereço completo', escapeHtml(endereco), 'detalhe-item--full')}
+        ${item('Carga horária', v.cargaHoraria ? `${escapeHtml(v.cargaHoraria)} horas` : '-')}
         ${item('Local de prestação de serviço', escapeHtml(v.localPrestacao || '-'))}
+        ${item('Secretaria', escapeHtml(v.secretaria || '-'))}
+        ${item('Nome do Secretário', escapeHtml(v.nomeSecretario || '-'))}
+      </div>
+    </section>
+
+    <section class="form-secao">
+      <h2 class="form-secao__titulo">${icon('calendar')} Período e Horário</h2>
+      <div class="detalhe-grid">
         ${item('Data de início', formatarDataBR(v.dataInicio))}
         ${item('Data de término', formatarDataBR(v.dataTermino))}
         ${v.renovado ? item('Renovação', `Renovado em ${formatarDataBR(v.dataRenovacao)} · término anterior: ${formatarDataBR(v.terminoAnterior)}`) : ''}
-        ${item('Horário', `${escapeHtml((v.horarioInicio || '-').slice(0, 5))} às ${escapeHtml((v.horarioTermino || '-').slice(0, 5))}`)}
+        ${item('Horário', escapeHtml(formatarHorario(v.horarioInicio, v.horarioTermino)))}
         ${item('Dias da semana', escapeHtml(formatarDiasSemanaExibicao(v.diasSemana)))}
-        ${item('Secretaria', escapeHtml(v.secretaria || '-'))}
-        ${item('Nome do Secretário', escapeHtml(v.nomeSecretario || '-'))}
+      </div>
+    </section>
+
+    <section class="form-secao" id="secao-docs-pessoais">
+      <h2 class="form-secao__titulo">${icon('paperclip')} Documentos do Voluntário</h2>
+      <div id="area-docs-pessoais">
+        <span class="skeleton" style="width:60%;margin-bottom:.6rem;"></span>
+        <span class="skeleton" style="width:40%;"></span>
       </div>
     </section>
 
@@ -132,7 +178,7 @@ function renderizarVoluntario(v) {
     </section>
 
     <section class="form-secao">
-      <h2 class="form-secao__titulo">${icon('file')} Documentos</h2>
+      <h2 class="form-secao__titulo">${icon('file')} Termos de Adesão gerados</h2>
       <div id="area-documentos">
         <span class="skeleton" style="width:50%;margin-bottom:.6rem;"></span>
         <span class="skeleton" style="width:35%;"></span>
@@ -156,6 +202,7 @@ function renderizarVoluntario(v) {
       VOLUNTARIO_ATUAL = atualizado;
       renderizarVoluntario(atualizado);
       carregarHistoricoDocumentos(atualizado.id);
+      renderizarDocumentosPessoais();
     }));
   }
 

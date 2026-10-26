@@ -134,35 +134,14 @@
         </div>
       </section>
 
-      <!-- Dados da Prestação de Serviço -->
+      <!-- Endereço -->
       <section class="form-secao">
         <h2 class="form-secao__titulo">
-          <span data-icon="briefcase"></span>
-          Dados da Prestação de Serviço
+          <span data-icon="mapPin"></span>
+          Endereço do Voluntário
         </h2>
 
         <div class="form-grid">
-          <div class="campo">
-            <label for="cargaHoraria">Carga horária <span class="obrigatorio">*</span></label>
-            <select id="cargaHoraria">
-              <option value="">Selecione...</option>
-              <option value="40">40 horas</option>
-              <option value="30">30 horas</option>
-              <option value="20">20 horas</option>
-            </select>
-            <div class="campo-erro" id="erro-cargaHoraria">Selecione a carga horária.</div>
-          </div>
-
-          <div class="campo campo--span-2">
-            <label for="cargo">Cargo / Função <span class="obrigatorio">*</span></label>
-            <select id="cargo">
-              <option value="">Selecione...</option>
-              <option value="Auxílio na Limpeza do Espaço Escolar/Zelador">Auxílio na Limpeza do Espaço Escolar/Zelador</option>
-              <option value="Profissional de Apoio Escolar PAE (cuidador)">Profissional de Apoio Escolar PAE (cuidador)</option>
-            </select>
-            <div class="campo-erro" id="erro-cargo">Informe o cargo/função.</div>
-          </div>
-
           <div class="campo">
             <label for="cep">CEP <span class="obrigatorio">*</span></label>
             <input type="text" id="cep" placeholder="00000-000" maxlength="9" inputmode="numeric">
@@ -214,6 +193,43 @@
             </select>
             <div class="campo-erro" id="erro-estado">Selecione o estado.</div>
           </div>
+        </div>
+      </section>
+
+      <!-- Dados da Prestação de Serviço -->
+      <section class="form-secao">
+        <h2 class="form-secao__titulo">
+          <span data-icon="briefcase"></span>
+          Dados da Prestação de Serviço
+        </h2>
+
+        <div class="form-grid">
+          <div class="campo campo--span-2">
+            <label for="cargo">Cargo / Função <span class="obrigatorio">*</span></label>
+            <select id="cargo">
+              <option value="">Selecione...</option>
+              <option value="Auxílio na Limpeza do Espaço Escolar/Zelador">Auxílio na Limpeza do Espaço Escolar/Zelador</option>
+              <option value="Profissional de Apoio Escolar PAE (cuidador)">Profissional de Apoio Escolar PAE (cuidador)</option>
+              <option value="Inspetor de Pátio">Inspetor de Pátio</option>
+              <option value="Auxílio na Alimentação Escolar/Auxiliar de Cozinha">Auxílio na Alimentação Escolar/Auxiliar de Cozinha</option>
+              <option value="Auxílio na Alimentação Escolar/Cozinheiro(a)">Auxílio na Alimentação Escolar/Cozinheiro(a)</option>
+              <option value="Serviço Voluntário Profissional Assistente de Alfabetização">Serviço Voluntário Profissional Assistente de Alfabetização</option>
+              <option value="Instrutor de Laboratório de Informática">Instrutor de Laboratório de Informática</option>
+              <option value="Auxiliar de Secretaria Escolar">Auxiliar de Secretaria Escolar</option>
+            </select>
+            <div class="campo-erro" id="erro-cargo">Informe o cargo/função.</div>
+          </div>
+
+          <div class="campo">
+            <label for="cargaHoraria">Carga horária <span class="obrigatorio">*</span></label>
+            <select id="cargaHoraria">
+              <option value="">Selecione...</option>
+              <option value="40">40 horas</option>
+              <option value="30">30 horas</option>
+              <option value="20">20 horas</option>
+            </select>
+            <div class="campo-erro" id="erro-cargaHoraria">Selecione a carga horária.</div>
+          </div>
 
           <div class="campo campo--full">
             <label for="localPrestacao">Local de prestação de serviço <span class="obrigatorio">*</span></label>
@@ -228,47 +244,6 @@
             </select>
             <input type="text" id="localPrestacaoOutra" placeholder="Ex: Escola Municipal XYZ, Secretaria Municipal de Educação..." class="campo-outra" hidden>
             <div class="campo-erro" id="erro-localPrestacao">Informe o local de prestação de serviço.</div>
-          </div>
-
-          <div class="campo">
-            <label for="dataInicio">Data de início <span class="obrigatorio">*</span></label>
-            <input type="date" id="dataInicio">
-            <div class="campo-erro" id="erro-dataInicio">Informe a data de início.</div>
-          </div>
-
-          <div class="campo campo--alinhado-base">
-            <button type="button" class="btn btn--outline" id="preencherPeriodo"><span data-icon="calendar"></span> Hoje + 6 meses</button>
-          </div>
-
-          <div class="campo">
-            <label for="dataTermino">Data de término <span class="obrigatorio">*</span></label>
-            <input type="date" id="dataTermino">
-            <div class="campo-erro" id="erro-dataTermino">A data de término deve ser posterior à data de início.</div>
-          </div>
-
-          <div class="campo">
-            <label for="horarioInicio">Horário de início <span class="obrigatorio">*</span></label>
-            <input type="time" id="horarioInicio">
-            <div class="campo-erro" id="erro-horarioInicio">Informe o horário de início.</div>
-          </div>
-
-          <div class="campo">
-            <label for="horarioTermino">Horário de término <span class="obrigatorio">*</span></label>
-            <input type="time" id="horarioTermino">
-            <div class="campo-erro" id="erro-horarioTermino">O horário de término deve ser posterior ao de início.</div>
-          </div>
-
-          <div class="campo campo--full">
-            <label>Dias da semana em que realizará a prestação de serviço <span class="texto-suave">(opcional)</span></label>
-            <div class="dias-semana-grupo">
-              <label class="dia-semana-opcao"><input type="checkbox" name="diaSemana" value="SEG"> Seg</label>
-              <label class="dia-semana-opcao"><input type="checkbox" name="diaSemana" value="TER"> Ter</label>
-              <label class="dia-semana-opcao"><input type="checkbox" name="diaSemana" value="QUA"> Qua</label>
-              <label class="dia-semana-opcao"><input type="checkbox" name="diaSemana" value="QUI"> Qui</label>
-              <label class="dia-semana-opcao"><input type="checkbox" name="diaSemana" value="SEX"> Sex</label>
-              <label class="dia-semana-opcao"><input type="checkbox" name="diaSemana" value="SAB"> Sáb</label>
-              <label class="dia-semana-opcao"><input type="checkbox" name="diaSemana" value="DOM"> Dom</label>
-            </div>
           </div>
 
           <div class="campo">
@@ -294,6 +269,57 @@
             </select>
             <input type="text" id="nomeSecretarioOutra" placeholder="Informe o nome do secretário" class="campo-outra" hidden>
             <div class="campo-erro" id="erro-nomeSecretario">Informe o nome do secretário.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Período do contrato e horário -->
+      <section class="form-secao">
+        <h2 class="form-secao__titulo">
+          <span data-icon="calendar"></span>
+          Período e Horário
+        </h2>
+
+        <div class="form-grid">
+          <div class="campo">
+            <label for="dataInicio">Data de início <span class="obrigatorio">*</span></label>
+            <input type="date" id="dataInicio">
+            <div class="campo-erro" id="erro-dataInicio">Informe a data de início.</div>
+          </div>
+
+          <div class="campo">
+            <label for="dataTermino">Data de término <span class="obrigatorio">*</span></label>
+            <input type="date" id="dataTermino">
+            <div class="campo-erro" id="erro-dataTermino">A data de término deve ser posterior à data de início.</div>
+          </div>
+
+          <div class="campo campo--alinhado-base campo--span-2">
+            <button type="button" class="btn btn--outline" id="preencherPeriodo"><span data-icon="calendar"></span> Hoje + 6 meses</button>
+          </div>
+
+          <div class="campo">
+            <label for="horarioInicio">Horário de início <span class="obrigatorio">*</span></label>
+            <input type="time" id="horarioInicio">
+            <div class="campo-erro" id="erro-horarioInicio">Informe o horário de início.</div>
+          </div>
+
+          <div class="campo">
+            <label for="horarioTermino">Horário de término <span class="obrigatorio">*</span></label>
+            <input type="time" id="horarioTermino">
+            <div class="campo-erro" id="erro-horarioTermino">O horário de término deve ser posterior ao de início.</div>
+          </div>
+
+          <div class="campo campo--full">
+            <label>Dias da semana em que realizará a prestação de serviço <span class="texto-suave">(opcional)</span></label>
+            <div class="dias-semana-grupo">
+              <label class="dia-semana-opcao"><input type="checkbox" name="diaSemana" value="SEG"> Seg</label>
+              <label class="dia-semana-opcao"><input type="checkbox" name="diaSemana" value="TER"> Ter</label>
+              <label class="dia-semana-opcao"><input type="checkbox" name="diaSemana" value="QUA"> Qua</label>
+              <label class="dia-semana-opcao"><input type="checkbox" name="diaSemana" value="QUI"> Qui</label>
+              <label class="dia-semana-opcao"><input type="checkbox" name="diaSemana" value="SEX"> Sex</label>
+              <label class="dia-semana-opcao"><input type="checkbox" name="diaSemana" value="SAB"> Sáb</label>
+              <label class="dia-semana-opcao"><input type="checkbox" name="diaSemana" value="DOM"> Dom</label>
+            </div>
           </div>
         </div>
       </section>

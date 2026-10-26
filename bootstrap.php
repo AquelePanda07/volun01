@@ -16,6 +16,7 @@ require_once __DIR__ . '/services/GoogleSheetsService.php';
 require_once __DIR__ . '/services/MySQLService.php';
 require_once __DIR__ . '/services/VoluntarioService.php';
 require_once __DIR__ . '/services/ContratoService.php';
+require_once __DIR__ . '/services/AnexoService.php';
 require_once __DIR__ . '/services/DocumentoService.php';
 require_once __DIR__ . '/services/ListaSimplesService.php';
 require_once __DIR__ . '/src/VoluntarioRepository.php';

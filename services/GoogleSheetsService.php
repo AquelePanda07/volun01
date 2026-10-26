@@ -71,6 +71,16 @@ class GoogleSheetsService extends RepositorioDados
     private const DIR_CACHE = __DIR__ . '/../cache';
     private const VALIDADE_ESTRUTURA = 300;
 
+    /**
+     * As linhas lidas também ficam em disco por pouco tempo: navegar entre
+     * as páginas deixa de esperar ~1 s pelo Google a cada tela. Escritas
+     * feitas pelo sistema apagam esse cache na hora; edições manuais na
+     * planilha aparecem em até VALIDADE_LINHAS segundos. Escritas sempre
+     * releem a aba (nunca usam este cache), para não gravar na linha errada
+     * caso alguém tenha inserido/removido linhas manualmente.
+     */
+    private const VALIDADE_LINHAS = 60;
+
     public function __construct()
     {
         $config = require __DIR__ . '/../config/google-sheets.php';
@@ -107,6 +117,7 @@ class GoogleSheetsService extends RepositorioDados
         $estrutura = $this->garantirAba($aba);
 
         if (empty($dados['ID'])) {
+            $this->lerLinhas($entidade, true);
             $dados['ID'] = (string) $this->proximoId($entidade);
         }
 
@@ -121,7 +132,7 @@ class GoogleSheetsService extends RepositorioDados
             ['values' => [$valores], 'majorDimension' => 'ROWS'],
             ['valueInputOption' => 'RAW', 'insertDataOption' => 'INSERT_ROWS']
         );
-        unset(self::$linhasPorAba[$this->chaveCache($aba)]);
+        $this->invalidarLinhas($aba);
 
         $registro = [];
         foreach ($estrutura['indices'] as $coluna => $indice) {
@@ -133,6 +144,7 @@ class GoogleSheetsService extends RepositorioDados
     public function atualizar(string $entidade, int $id, array $dados): void
     {
         $aba = $this->aba($entidade);
+        $this->lerLinhas($entidade, true);
         $linha = $this->localizarLinha($entidade, $id);
         if ($linha === null) {
             throw new RuntimeException("Registro {$id} não encontrado na aba \"{$aba}\".");
@@ -156,12 +168,13 @@ class GoogleSheetsService extends RepositorioDados
             ['values' => [array_values($valores)], 'majorDimension' => 'ROWS'],
             ['valueInputOption' => 'RAW']
         );
-        unset(self::$linhasPorAba[$this->chaveCache($aba)]);
+        $this->invalidarLinhas($aba);
     }
 
     public function excluir(string $entidade, int $id): void
     {
         $aba = $this->aba($entidade);
+        $this->lerLinhas($entidade, true);
         $linha = $this->localizarLinha($entidade, $id);
         if ($linha === null) {
             return;
@@ -182,7 +195,15 @@ class GoogleSheetsService extends RepositorioDados
             ]],
         ]);
         // As linhas abaixo sobem uma posição: o cache precisa ser relido.
-        unset(self::$linhasPorAba[$this->chaveCache($aba)]);
+        $this->invalidarLinhas($aba);
+    }
+
+    /** Descarta as linhas guardadas (memória e disco) depois de uma escrita na aba. */
+    private function invalidarLinhas(string $aba): void
+    {
+        $chave = $this->chaveCache($aba);
+        unset(self::$linhasPorAba[$chave]);
+        @unlink($this->arquivoCache('linhas_' . $chave));
     }
 
     // ------------------------------------------------------------------
@@ -196,14 +217,23 @@ class GoogleSheetsService extends RepositorioDados
      * real da linha na planilha) e "_valores" (células brutas), que
      * nunca saem desta classe.
      *
+     * $fresco = true ignora os caches e relê a aba no Google (usado antes
+     * de qualquer escrita).
+     *
      * @return array<int, array<string, mixed>>
      */
-    private function lerLinhas(string $entidade): array
+    private function lerLinhas(string $entidade, bool $fresco = false): array
     {
         $aba = $this->aba($entidade);
         $chave = $this->chaveCache($aba);
-        if (isset(self::$linhasPorAba[$chave])) {
-            return self::$linhasPorAba[$chave];
+        if (!$fresco) {
+            if (isset(self::$linhasPorAba[$chave])) {
+                return self::$linhasPorAba[$chave];
+            }
+            $emDisco = $this->lerCacheDisco('linhas_' . $chave);
+            if ($emDisco !== null && ($emDisco['expiraEm'] ?? 0) > time() && is_array($emDisco['linhas'] ?? null)) {
+                return self::$linhasPorAba[$chave] = $emDisco['linhas'];
+            }
         }
 
         $estrutura = $this->garantirAba($aba);
@@ -231,6 +261,10 @@ class GoogleSheetsService extends RepositorioDados
             $linhas[] = $linha;
         }
 
+        $this->gravarCacheDisco('linhas_' . $chave, [
+            'linhas' => $linhas,
+            'expiraEm' => time() + self::VALIDADE_LINHAS,
+        ]);
         return self::$linhasPorAba[$chave] = $linhas;
     }
 

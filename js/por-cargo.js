@@ -139,7 +139,7 @@ function renderizarGrupos() {
                   <strong>${escapeHtml(v.nome)}${seloRenovado(v)}${seloTermos(v)}</strong>
                   <span>${icon('mapPin')} ${escapeHtml(v.localPrestacao || '-')}</span>
                 </div>
-                <span class="cargo-membro__prazo">${v.status === 'ATIVO' ? `Termina em ${formatarDataBR(v.dataTermino)}` : ''}</span>
+                <span class="cargo-membro__prazo">${v.dataTermino ? `${v.status === 'ENCERRADO' ? 'Encerrou em' : 'Termina em'} ${formatarDataBR(v.dataTermino)}` : ''}</span>
                 ${badgeStatus(v.status)}
               </a>
             </li>

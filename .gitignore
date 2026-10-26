@@ -5,6 +5,7 @@
 !/documentos/termos/.gitkeep
 /documentos/lotes/
 /documentos/assinados/
+/documentos/pessoais/
 /documentos/frequencia/
 /config/credentials/*.json
 /logs/*
@@ -12,3 +13,4 @@
 composer.phar
 *.log
 /cache/
+/backups/

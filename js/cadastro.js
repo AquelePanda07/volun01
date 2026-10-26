@@ -42,10 +42,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 /* ------------------------------------------------------------------ */
 async function carregarListasDinamicas() {
   await Promise.all([
-    popularSelect('cargo', 'api/cargos.php?ativos=1', item => ({ valor: item.nome, texto: item.nome })),
-    popularSelectComOutra('secretaria', 'api/secretarias.php?ativos=1', item => ({ valor: item.nome, texto: item.nome })),
-    popularSelectComOutra('nomeSecretario', 'api/secretarios.php?ativos=1', item => ({ valor: item.nome, texto: item.nome })),
-    popularSelectComOutra('localPrestacao', 'api/locais.php?ativos=1', item => ({ valor: item.nome, texto: item.nome })),
+    // Caminhos relativos a API_BASE ('api/'), que apiFetch() já acrescenta.
+    popularSelect('cargo', 'cargos.php?ativos=1', item => ({ valor: item.nome, texto: item.nome })),
+    popularSelectComOutra('secretaria', 'secretarias.php?ativos=1', item => ({ valor: item.nome, texto: item.nome })),
+    popularSelectComOutra('nomeSecretario', 'secretarios.php?ativos=1', item => ({ valor: item.nome, texto: item.nome })),
+    popularSelectComOutra('localPrestacao', 'locais.php?ativos=1', item => ({ valor: item.nome, texto: item.nome })),
   ]);
 }
 

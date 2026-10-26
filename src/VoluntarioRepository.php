@@ -67,6 +67,7 @@ class VoluntarioRepository
         // Remove primeiro os contratos relacionados para manter a
         // consistência entre as abas (especificação, seção 15).
         $this->contratos->excluirPorVoluntario($id);
+        (new AnexoService())->excluirPorVoluntario($id);
         $this->voluntarios->excluir($id);
     }
 

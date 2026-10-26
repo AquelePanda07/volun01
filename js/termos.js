@@ -137,7 +137,7 @@ function htmlLinha(v, i) {
         <div class="termo-linha__info">
           <a href="visualizar.html?id=${encodeURIComponent(v.id)}"><strong>${escapeHtml(v.nome)}</strong></a>
           <span>${escapeHtml(v.cargo || '-')}</span>
-          <span>${formatarDataBR(v.dataInicio)} → ${formatarDataBR(v.dataTermino)}</span>
+          <span>${formatarPeriodoBR(v.dataInicio, v.dataTermino)}</span>
           <div class="termo-linha__selos">${badgeStatus(status)}${badgeRenovado(v)}</div>
         </div>
       </div>

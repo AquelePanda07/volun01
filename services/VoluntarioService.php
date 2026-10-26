@@ -181,6 +181,9 @@ class VoluntarioService
             }
             $linha[$coluna] = $dados[$camel];
         }
+        if (isset($linha['Nome'])) {
+            $linha['Nome'] = Validator::formatarNome((string) $linha['Nome']);
+        }
         return $linha;
     }
 

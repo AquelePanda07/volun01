@@ -135,4 +135,25 @@ class Validator
         $hoje = new DateTime('today');
         return (int) $nascimento->diff($hoje)->y;
     }
+
+    /**
+     * Padroniza nomes de pessoas: "adriana lima  DA silva" -> "Adriana Lima da Silva".
+     * Partículas (da, de, do, das, dos, e) ficam em minúsculas, exceto no início.
+     */
+    public static function formatarNome(string $nome): string
+    {
+        $nome = trim((string) preg_replace('/\s+/u', ' ', $nome));
+        if ($nome === '') {
+            return '';
+        }
+        $particulas = ['da', 'de', 'do', 'das', 'dos', 'e', 'di', 'du'];
+        $palavras = explode(' ', mb_convert_case($nome, MB_CASE_TITLE, 'UTF-8'));
+        foreach ($palavras as $i => $palavra) {
+            $minuscula = mb_strtolower($palavra, 'UTF-8');
+            if ($i > 0 && in_array($minuscula, $particulas, true)) {
+                $palavras[$i] = $minuscula;
+            }
+        }
+        return implode(' ', $palavras);
+    }
 }
