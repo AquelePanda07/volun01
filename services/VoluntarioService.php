@@ -112,6 +112,15 @@ class VoluntarioService
         return $this->paraCamelCase($linha);
     }
 
+    /** Marca/desmarca o voluntário como "Não ativo" (desistiu ou sem dados), sem mexer nos demais campos. */
+    public function definirNaoAtivo(int $id, bool $naoAtivo): void
+    {
+        if ($this->dados->getVoluntarioById($id) === null) {
+            throw new RuntimeException('Voluntário não encontrado.');
+        }
+        $this->dados->updateVoluntario($id, ['Nao Ativo' => $naoAtivo ? 'TRUE' : '']);
+    }
+
     public function excluir(int $id): void
     {
         $atual = $this->dados->getVoluntarioById($id);
@@ -195,6 +204,7 @@ class VoluntarioService
             $resultado[$camel] = $linha[$coluna] ?? '';
         }
         $resultado['dataCadastro'] = $linha['Data Cadastro'] ?? '';
+        $resultado['naoAtivo'] = strtoupper(trim((string) ($linha['Nao Ativo'] ?? ''))) === 'TRUE';
         $resultado['idade'] = !empty($resultado['dataNascimento']) ? Validator::calcularIdade((string) $resultado['dataNascimento']) : null;
         return $resultado;
     }

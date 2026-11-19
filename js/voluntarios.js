@@ -142,6 +142,9 @@ const FILTROS_RENOVACAO = {
 
 function atendeFiltroStatus(v, filtro) {
   if (!filtro) return true;
+  // "Não ativos" (desistiram ou sem dados) ficam só no chip próprio e em "Todos".
+  if (filtro === 'NAO_ATIVO') return Boolean(v.naoAtivo);
+  if (v.naoAtivo) return false;
   if (FILTROS_RENOVACAO[filtro]) return FILTROS_RENOVACAO[filtro].filtro(v);
   return calcularStatusContrato(v.dataInicio, v.dataTermino) === filtro;
 }
@@ -164,7 +167,9 @@ function renderizarChipsStatus() {
     chip('', 'Todos') +
     ['ATIVO', 'A_INICIAR', 'ENCERRADO'].map(s => chip(s, STATUS_LABEL[s])).join('') +
     '<span class="chips__divisor" aria-hidden="true"></span>' +
-    Object.entries(FILTROS_RENOVACAO).map(([s, f]) => chip(s, `${icon('repeat')}${f.texto}`, ' chip--renovacao')).join('');
+    Object.entries(FILTROS_RENOVACAO).map(([s, f]) => chip(s, `${icon('repeat')}${f.texto}`, ' chip--renovacao')).join('') +
+    '<span class="chips__divisor" aria-hidden="true"></span>' +
+    chip('NAO_ATIVO', `${icon('userX')}Não ativos`, ' chip--inativo');
 }
 
 /**
@@ -238,9 +243,9 @@ function renderizarLista() {
 
     // Linha da tabela (telas grandes)
     const tr = document.createElement('tr');
-    tr.className = `animar-entrada linha-clicavel${String(v.id) === PREVIA_ID ? ' linha--selecionada' : ''}`;
+    tr.className = `animar-entrada linha-clicavel${String(v.id) === PREVIA_ID ? ' linha--selecionada' : ''}${v.naoAtivo ? ' linha--inativa' : ''}`;
     tr.dataset.previa = v.id;
-    tr.setAttribute('style', `--i:${i};${destaquePrazo}`);
+    tr.setAttribute('style', `--i:${i};${v.naoAtivo ? '' : destaquePrazo}`);
     tr.innerHTML = `
       <td class="col-selecao"><input type="checkbox" data-selecionar="${v.id}" ${marcado} aria-label="Selecionar ${escapeHtml(v.nome)}"></td>
       <td>
@@ -255,13 +260,14 @@ function renderizarLista() {
       <td>${escapeHtml(v.localPrestacao || '-')}</td>
       <td>${formatarDataBR(v.dataTermino)}</td>
       <td>${escapeHtml(textoDiasRestantes)}</td>
-      <td>${badgeStatus(status)}${badgeRenovado(v)}</td>
+      <td>${v.naoAtivo ? badgeNaoAtivo(v) : badgeStatus(status) + badgeRenovado(v)}</td>
       <td>
         <div class="acoes-cel">
           ${renovavel ? `<button class="btn btn--outline btn--renovar btn--sm btn--icon-only" data-renovar="${v.id}" data-dica="Renovar contrato" aria-label="Renovar contrato de ${escapeHtml(v.nome)}">${icon('repeat')}</button>` : ''}
           <a class="btn btn--outline btn--sm btn--icon-only" href="visualizar.html?id=${id}" data-dica="Visualizar" aria-label="Visualizar ${escapeHtml(v.nome)}">${icon('eye')}</a>
           <a class="btn btn--outline btn--sm btn--icon-only" href="cadastro.html?id=${id}" data-dica="Editar" aria-label="Editar ${escapeHtml(v.nome)}">${icon('edit')}</a>
           <a class="btn btn--outline btn--sm btn--icon-only" href="gerar-termo.html?id=${id}" data-dica="Gerar Termo de Adesão" aria-label="Gerar Termo de Adesão de ${escapeHtml(v.nome)}">${icon('file')}</a>
+          <button class="btn btn--outline btn--sm btn--icon-only" data-nao-ativo="${v.id}" data-dica="${v.naoAtivo ? 'Reativar voluntário' : 'Marcar como não ativo'}" aria-label="${v.naoAtivo ? 'Reativar' : 'Marcar como não ativo'} ${escapeHtml(v.nome)}">${icon(v.naoAtivo ? 'userCheck' : 'userX')}</button>
           <button class="btn btn--danger-suave btn--sm btn--icon-only" data-excluir="${v.id}" data-dica="Excluir" aria-label="Excluir ${escapeHtml(v.nome)}">${icon('trash')}</button>
         </div>
       </td>
@@ -270,9 +276,9 @@ function renderizarLista() {
 
     // Card (telas pequenas)
     const card = document.createElement('div');
-    card.className = `voluntario-card animar-entrada linha-clicavel${String(v.id) === PREVIA_ID ? ' linha--selecionada' : ''}`;
+    card.className = `voluntario-card animar-entrada linha-clicavel${String(v.id) === PREVIA_ID ? ' linha--selecionada' : ''}${v.naoAtivo ? ' linha--inativa' : ''}`;
     card.dataset.previa = v.id;
-    card.setAttribute('style', `--i:${i};${destaquePrazo}`);
+    card.setAttribute('style', `--i:${i};${v.naoAtivo ? '' : destaquePrazo}`);
     card.innerHTML = `
       <div class="voluntario-card__topo">
         <input type="checkbox" data-selecionar="${v.id}" ${marcado} aria-label="Selecionar ${escapeHtml(v.nome)}">
@@ -281,7 +287,7 @@ function renderizarLista() {
           <strong>${escapeHtml(v.nome)}${seloRenovado(v)}${seloTermos(v)}</strong>
           <span>${escapeHtml(v.cargo || '-')} · ${escapeHtml(v.localPrestacao || '-')}</span>
         </div>
-        ${badgeStatus(status)}
+        ${v.naoAtivo ? badgeNaoAtivo(v) : badgeStatus(status)}
       </div>
       <div class="voluntario-card__linha"><b>Término do contrato</b><span>${formatarDataBR(v.dataTermino)}</span></div>
       <div class="voluntario-card__linha"><b>Dias para o término</b><span>${escapeHtml(textoDiasRestantes)}</span></div>
@@ -290,6 +296,7 @@ function renderizarLista() {
         <a class="btn btn--outline btn--sm" href="visualizar.html?id=${id}">${icon('eye')} Ver</a>
         <a class="btn btn--outline btn--sm" href="cadastro.html?id=${id}">${icon('edit')} Editar</a>
         <a class="btn btn--outline btn--sm" href="gerar-termo.html?id=${id}">${icon('file')} Termo</a>
+        <button class="btn btn--outline btn--sm" data-nao-ativo="${v.id}">${icon(v.naoAtivo ? 'userCheck' : 'userX')} ${v.naoAtivo ? 'Reativar' : 'Não ativo'}</button>
         <button class="btn btn--danger-suave btn--sm" data-excluir="${v.id}">${icon('trash')} Excluir</button>
       </div>
     `;
@@ -315,9 +322,39 @@ function renderizarLista() {
     });
   });
 
+  // Liga os botões "Não ativo" / "Reativar" (tabela + cards)
+  document.querySelectorAll('[data-nao-ativo]').forEach(btn => {
+    btn.addEventListener('click', () => alternarNaoAtivo(btn.getAttribute('data-nao-ativo')));
+  });
+
   // Liga os botões de exclusão (tabela + cards)
   document.querySelectorAll('[data-excluir]').forEach(btn => {
     btn.addEventListener('click', () => confirmarExclusao(btn.getAttribute('data-excluir')));
+  });
+}
+
+/** Marca o voluntário como "Não ativo" (desistiu ou sem dados) ou o reativa. */
+function alternarNaoAtivo(id) {
+  const voluntario = TODOS_VOLUNTARIOS.find(v => String(v.id) === String(id));
+  if (!voluntario) return;
+  const marcar = !voluntario.naoAtivo;
+
+  showConfirm({
+    titulo: marcar ? 'Marcar como não ativo' : 'Reativar voluntário',
+    mensagem: marcar
+      ? `Marcar "${voluntario.nome}" como não ativo (desistiu ou não temos os dados)? O cadastro não é apagado e pode ser reativado depois.`
+      : `Reativar "${voluntario.nome}"? O cadastro volta a aparecer nos filtros de status do contrato.`,
+    textoConfirmar: marcar ? 'Marcar como não ativo' : 'Reativar',
+    perigo: false,
+    onConfirm: async () => {
+      try {
+        const resposta = await definirVoluntarioNaoAtivo(id, marcar);
+        await recarregarVoluntarios();
+        showToast(resposta.mensagem, 'sucesso');
+      } catch (erro) {
+        showToast(erro.message || 'Não foi possível alterar o voluntário.', 'erro');
+      }
+    }
   });
 }
 
@@ -551,7 +588,7 @@ function renderizarPrevia() {
         <img class="previa__foto" src="${fotoOuAvatar(v)}" alt="Foto de ${escapeHtml(v.nome)}">
         <div class="previa__perfil-info">
           <h2>${escapeHtml(v.nome)}</h2>
-          <div class="previa__selos">${badgeStatus(status)}${badgeRenovado(v)}</div>
+          <div class="previa__selos">${v.naoAtivo ? badgeNaoAtivo(v) : badgeStatus(status) + badgeRenovado(v)}</div>
           <span class="previa__sub">${icon('briefcase')} ${escapeHtml(v.cargo || '-')}</span>
           <span class="previa__sub">${icon('mapPin')} ${escapeHtml(v.localPrestacao || '-')}</span>
         </div>

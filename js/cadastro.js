@@ -12,8 +12,6 @@ const CAMPOS_COM_OUTRA = ['secretaria', 'nomeSecretario', 'localPrestacao'];
 
 let FOTO_BASE64 = '';
 let ID_EDICAO = null;
-// Contrato renovado já foi prorrogado uma vez: o período pode chegar a 12 meses.
-let MESES_MAXIMOS_CONTRATO = 6;
 
 document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(location.search);
@@ -107,7 +105,6 @@ async function carregarParaEdicao(id) {
   }
 
   document.title = `Editar ${voluntario.nome} — Sistema de Gestão de Voluntários`;
-  if (voluntario.renovado) MESES_MAXIMOS_CONTRATO = 12;
   document.getElementById('topo-titulo').textContent = 'Editar Voluntário';
   // Editando, o item ativo do menu é "Voluntários" (e não "Adicionar").
   document.querySelectorAll('.sidebar__link').forEach(link => {
@@ -141,12 +138,71 @@ async function carregarParaEdicao(id) {
   // Secretaria, secretário e local: podem ser uma opção da lista ou "outra"
   CAMPOS_COM_OUTRA.forEach(campo => preencherCampoOutra(campo, voluntario[campo]));
 
+  configurarRenovacao(voluntario);
+
   if (voluntario.foto) {
     FOTO_BASE64 = voluntario.foto;
     document.getElementById('preview-foto').innerHTML = `<img src="${voluntario.foto}" alt="Prévia da foto">`;
   }
 
   atualizarIdade();
+}
+
+/* ------------------------------------------------------------------ */
+/* Renovação do contrato (só na edição)                                 */
+/* Com o contrato renovado, "Data de término" é o novo término e o      */
+/* original fica em "Término antes da renovação".                       */
+/* ------------------------------------------------------------------ */
+function configurarRenovacao(v) {
+  const secao = document.getElementById('secao-renovacao');
+  const caixa = document.getElementById('renovado');
+  const anterior = document.getElementById('terminoAnterior');
+  const dataRenovacao = document.getElementById('dataRenovacao');
+  const termino = document.getElementById('dataTermino');
+  const rotuloTermino = document.querySelector('label[for="dataTermino"]');
+  const erroTermino = document.getElementById('erro-dataTermino');
+  const erroTerminoOriginal = erroTermino.textContent;
+  let terminoRenovado = v.renovado ? termino.value : ''; // para voltar a ele se desmarcar e marcar de novo
+
+  secao.hidden = false;
+  caixa.checked = Boolean(v.renovado);
+  anterior.value = v.terminoAnterior || '';
+  dataRenovacao.value = v.dataRenovacao || '';
+
+  const atualizar = () => {
+    const ligado = caixa.checked;
+    secao.querySelectorAll('[data-campo-renovacao]').forEach(campo => { campo.hidden = !ligado; });
+    rotuloTermino.innerHTML = `${ligado ? 'Novo término (após a renovação)' : 'Data de término'} <span class="obrigatorio">*</span>`;
+    erroTermino.textContent = ligado
+      ? 'O novo término deve ser depois do término anterior e no máximo 6 meses após ele (ou após a data da renovação, se for mais recente).'
+      : erroTerminoOriginal;
+    document.getElementById('renovacao-dica').textContent = ligado
+      ? 'A "Data de término" em Período e Horário passa a ser o novo término.'
+      : (v.renovado
+        ? 'Ao salvar, a renovação será desfeita e o contrato volta ao término anterior.'
+        : 'Marque se este contrato já foi renovado (por exemplo, numa renovação feita fora do sistema).');
+  };
+
+  caixa.addEventListener('change', () => {
+    if (caixa.checked) {
+      if (!anterior.value) anterior.value = termino.value;
+      if (!dataRenovacao.value) dataRenovacao.value = dataParaISO(new Date());
+      if (!termino.value || termino.value <= anterior.value) {
+        termino.value = terminoRenovado && terminoRenovado > anterior.value
+          ? terminoRenovado
+          : somarMesesISO([anterior.value, dataRenovacao.value].sort().pop(), 6);
+      }
+    } else if (anterior.value) {
+      terminoRenovado = termino.value;
+      termino.value = anterior.value;
+    }
+    atualizar();
+  });
+  atualizar();
+}
+
+function renovacaoMarcada() {
+  return Boolean(ID_EDICAO) && document.getElementById('renovado').checked;
 }
 
 /* ------------------------------------------------------------------ */
@@ -318,9 +374,22 @@ function validarFormulario() {
   marcar('localPrestacao', localPrestacao.length === 0);
   marcar('dataInicio', !dataInicio);
 
-  const datasValidas = dataInicio && dataTermino && dataTermino > dataInicio;
-  const dentroDoPrazoMaximo = dataInicio && dataTermino && diferencaEmMeses(dataInicio, dataTermino) <= MESES_MAXIMOS_CONTRATO;
-  marcar('dataTermino', !dataTermino || !datasValidas || !dentroDoPrazoMaximo);
+  // Renovado: o novo término vai até 6 meses além do término anterior ou da data
+  // da renovação. O período original é histórico (pode ter vindo da planilha
+  // antiga com mais de 6 meses), então só se confere a ordem das datas.
+  if (renovacaoMarcada()) {
+    const terminoAnterior = document.getElementById('terminoAnterior').value;
+    const dataRenovacao = document.getElementById('dataRenovacao').value;
+    marcar('terminoAnterior', !terminoAnterior || Boolean(dataInicio && terminoAnterior <= dataInicio) ||
+      Boolean(dataTermino && terminoAnterior >= dataTermino));
+    marcar('dataRenovacao', !dataRenovacao);
+    const limite = terminoAnterior && dataRenovacao ? somarMesesISO([terminoAnterior, dataRenovacao].sort().pop(), 6) : '';
+    marcar('dataTermino', !dataTermino || !terminoAnterior || dataTermino <= terminoAnterior || Boolean(limite && dataTermino > limite));
+  } else {
+    const datasValidas = dataInicio && dataTermino && dataTermino > dataInicio;
+    const dentroDoPrazoMaximo = dataInicio && dataTermino && diferencaEmMeses(dataInicio, dataTermino) <= 6;
+    marcar('dataTermino', !dataTermino || !datasValidas || !dentroDoPrazoMaximo);
+  }
 
   marcar('horarioInicio', !horarioInicio);
   const horariosValidos = horarioInicio && horarioTermino && horarioTermino > horarioInicio;
@@ -384,6 +453,11 @@ async function aoSubmeter(evento) {
     secretaria: obterValorComOutra('secretaria'),
     nomeSecretario: obterValorComOutra('nomeSecretario'),
   };
+  if (ID_EDICAO) {
+    dados.renovado = renovacaoMarcada();
+    dados.terminoAnterior = dados.renovado ? document.getElementById('terminoAnterior').value : '';
+    dados.dataRenovacao = dados.renovado ? document.getElementById('dataRenovacao').value : '';
+  }
 
   const botaoSubmeter = document.querySelector('button[type="submit"]');
   const textoOriginalBotao = botaoSubmeter.innerHTML;

@@ -65,7 +65,8 @@ for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /c:"IPv4"') do (
 )
 echo.
 
-start "Sistema de Gestao de Voluntarios - Servidor PHP (%URL%)" cmd /k php -S %HOST%:%PORT% router.php
+REM post_max_size: os anexos (ate 50 MB) sao enviados em base64, ~33%% maiores.
+start "Sistema de Gestao de Voluntarios - Servidor PHP (%URL%)" cmd /k php -d post_max_size=80M -d memory_limit=512M -S %HOST%:%PORT% router.php
 
 REM Aguarda o servidor subir antes de abrir o navegador.
 timeout /t 2 /nobreak >nul

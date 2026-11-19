@@ -77,6 +77,11 @@ function configurarTratamentoDeErros(): void
     });
 
     set_error_handler(function ($severidade, $mensagem, $arquivo, $linha) {
+        // Respeita o operador @: avisos silenciados de propósito (ex.: rmdir de
+        // pasta que pode não existir) não devem virar exceção.
+        if (!(error_reporting() & $severidade)) {
+            return false;
+        }
         throw new ErrorException($mensagem, 0, $severidade, $arquivo, $linha);
     });
 }

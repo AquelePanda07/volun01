@@ -120,6 +120,7 @@ CREATE TABLE IF NOT EXISTS `voluntarios` (
   `estado` varchar(255) NOT NULL DEFAULT '',
   `data_cadastro` varchar(255) NOT NULL DEFAULT '',
   `contato` varchar(255) NOT NULL DEFAULT '',
+  `nao_ativo` varchar(255) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   KEY `idx_cpf` (`cpf`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

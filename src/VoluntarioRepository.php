@@ -62,6 +62,12 @@ class VoluntarioRepository
         return $this->buscarPorId($id);
     }
 
+    public function definirNaoAtivo(int $id, bool $naoAtivo): array
+    {
+        $this->voluntarios->definirNaoAtivo($id, $naoAtivo);
+        return $this->buscarPorId($id);
+    }
+
     public function excluir(int $id): void
     {
         // Remove primeiro os contratos relacionados para manter a

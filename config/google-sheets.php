@@ -57,6 +57,7 @@ return [
             'CEP', 'Logradouro', 'Numero', 'Complemento', 'Bairro', 'Cidade', 'Estado',
             'Data Cadastro',
             'Contato',
+            'Nao Ativo',
         ],
         'Contratos' => [
             'ID', 'ID Voluntario', 'Carga Horaria', 'Cargo', 'Local Prestacao',
@@ -80,9 +81,10 @@ return [
             'ID', 'ID Voluntario', 'Tipo Documento', 'Nome Arquivo', 'Caminho Arquivo',
             'Versao', 'Usuario Responsavel', 'Data Geracao',
         ],
-        // Arquivo único com os documentos pessoais do voluntário (RG, CPF, comprovantes...),
-        // uma linha por voluntário. "Documentos" lista (separados por vírgula) quais estão
-        // dentro do arquivo. O arquivo fica em documentos/pessoais/ e é servido por api/anexos.php.
+        // Arquivos com os documentos pessoais do voluntário (RG, CPF, comprovantes...),
+        // uma linha por arquivo. "Documentos" lista (separados por vírgula) quais foram
+        // entregues — é do voluntário e fica igual em todas as linhas dele. Os arquivos
+        // ficam em documentos/pessoais/ e são servidos por api/anexos.php.
         'Anexos' => [
             'ID', 'ID Voluntario', 'Documentos', 'Nome Original', 'Caminho Arquivo',
             'Tamanho', 'Data Envio',

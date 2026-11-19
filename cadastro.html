@@ -324,6 +324,33 @@
         </div>
       </section>
 
+      <!-- Renovação do contrato (só na edição; ver cadastro.js) -->
+      <section class="form-secao" id="secao-renovacao" hidden>
+        <h2 class="form-secao__titulo">
+          <span data-icon="repeat"></span>
+          Renovação do Contrato
+        </h2>
+
+        <div class="form-grid">
+          <div class="campo campo--full">
+            <label class="dia-semana-opcao renovacao-opcao"><input type="checkbox" id="renovado"> Contrato renovado</label>
+            <small class="texto-suave" id="renovacao-dica"></small>
+          </div>
+
+          <div class="campo" data-campo-renovacao>
+            <label for="terminoAnterior">Término antes da renovação <span class="obrigatorio">*</span></label>
+            <input type="date" id="terminoAnterior">
+            <div class="campo-erro" id="erro-terminoAnterior">Deve ficar depois da data de início e antes do novo término.</div>
+          </div>
+
+          <div class="campo" data-campo-renovacao>
+            <label for="dataRenovacao">Data da renovação <span class="obrigatorio">*</span></label>
+            <input type="date" id="dataRenovacao">
+            <div class="campo-erro" id="erro-dataRenovacao">Informe a data da renovação.</div>
+          </div>
+        </div>
+      </section>
+
       <div class="form-acoes form-acoes--fixa">
         <a href="voluntarios.html" class="btn btn--outline">
           <span data-icon="back"></span>

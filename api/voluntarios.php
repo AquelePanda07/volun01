@@ -7,6 +7,7 @@
  *   GET    /api/voluntarios.php?id=5      -> busca um voluntário
  *   POST   /api/voluntarios.php           -> cria um voluntário (JSON)
  *   PUT    /api/voluntarios.php?id=5      -> atualiza um voluntário (JSON)
+ *   PATCH  /api/voluntarios.php?id=5      -> marca/desmarca como "Não ativo" ({"naoAtivo": true})
  *   DELETE /api/voluntarios.php?id=5      -> exclui um voluntário
  */
 
@@ -57,8 +58,12 @@ switch ($metodo) {
         }
 
         $dados = lerJsonDaRequisicao();
+        // Sem os campos da renovação no envio, valida com os que já estão salvos.
+        if (!array_key_exists('renovado', $dados)) {
+            $dados += array_intersect_key($existente, array_flip(['renovado', 'terminoAnterior', 'dataRenovacao']));
+        }
 
-        $erros = Validator::validarVoluntario($dados, !empty($existente['renovado']) ? 12 : 6);
+        $erros = Validator::validarVoluntario($dados);
         if (!empty($dados['cpf']) && $repositorio->existeCpf((string) $dados['cpf'], $id)) {
             $erros[] = 'Já existe um voluntário cadastrado com este CPF.';
         }
@@ -68,6 +73,28 @@ switch ($metodo) {
 
         $atualizado = $repositorio->atualizar($id, $dados);
         responderJson(['sucesso' => true, 'mensagem' => 'Voluntário atualizado com sucesso!', 'dados' => $atualizado]);
+        break;
+
+    case 'PATCH':
+        // Só altera a marcação "Não ativo": não exige o cadastro completo,
+        // já que serve justamente para quem desistiu ou não tem dados.
+        if (!$id) {
+            responderJson(['sucesso' => false, 'mensagem' => 'Informe o id do voluntário.'], 400);
+        }
+        if (!$repositorio->buscarPorId($id)) {
+            responderJson(['sucesso' => false, 'mensagem' => 'Voluntário não encontrado.'], 404);
+        }
+        $dados = lerJsonDaRequisicao();
+        if (!array_key_exists('naoAtivo', $dados)) {
+            responderJson(['sucesso' => false, 'mensagem' => 'Informe o campo "naoAtivo".'], 422);
+        }
+        $naoAtivo = filter_var($dados['naoAtivo'], FILTER_VALIDATE_BOOLEAN);
+        $atualizado = $repositorio->definirNaoAtivo($id, $naoAtivo);
+        responderJson([
+            'sucesso' => true,
+            'mensagem' => $naoAtivo ? 'Voluntário marcado como não ativo.' : 'Voluntário reativado.',
+            'dados' => $atualizado,
+        ]);
         break;
 
     case 'DELETE':

@@ -655,6 +655,9 @@ button { font-family: inherit; }
 .chip--ativo { background: var(--cor-primaria); border-color: var(--cor-primaria); color: #fff; }
 .chip--ativo:hover { color: #fff; }
 .chip--ativo .chip__contador { background: rgba(255, 255, 255, .22); }
+.chip--inativo .icon { width: .85rem; height: .85rem; }
+.chip--inativo.chip--ativo { background: var(--cor-texto-suave); border-color: var(--cor-texto-suave); color: #fff; }
+.linha--inativa .avatar-mini, .linha--inativa .pessoa-cel__info, .linha--inativa .voluntario-card__info { opacity: .6; }
 .chips__divisor { width: 1px; align-self: stretch; margin: .2rem .3rem; background: var(--cor-borda); }
 .chip--renovacao { color: var(--cor-renovado); }
 .chip--renovacao .icon { width: .85rem; height: .85rem; }
@@ -834,6 +837,7 @@ input.campo-invalido, select.campo-invalido {
 .dia-semana-opcao input { position: absolute; opacity: 0; pointer-events: none; }
 .dia-semana-opcao:has(input:checked) { background: var(--cor-primaria); border-color: var(--cor-primaria); color: #fff; }
 .dia-semana-opcao:has(input:focus-visible) { box-shadow: var(--anel-foco); }
+.renovacao-opcao { align-self: flex-start; width: fit-content; }
 
 .upload-foto {
   display: flex;
@@ -957,6 +961,7 @@ a.pessoa-cel:hover strong { color: var(--cor-primaria); }
 .badge--alerta { background: var(--cor-alerta-fundo); color: var(--cor-alerta); }
 .badge--perigo { background: var(--cor-perigo-fundo); color: var(--cor-perigo); }
 .badge--info { background: var(--cor-primaria-clara); color: var(--cor-primaria); }
+.badge--inativo { background: rgba(120, 130, 145, .16); color: var(--cor-texto-suave); }
 .badge--renovado { background: var(--cor-renovado-fundo); color: var(--cor-renovado); }
 
 /* Ícone de contrato renovado ao lado do nome (listas) */

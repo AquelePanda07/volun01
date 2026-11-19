@@ -26,6 +26,8 @@ const ICONS = {
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>',
   arrowRight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>',
   users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>',
+  userX: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="18" y1="8" x2="23" y2="13"></line><line x1="23" y1="8" x2="18" y2="13"></line></svg>',
+  userCheck: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>',
   user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>',
   checkCircle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
   xCircle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
@@ -122,6 +124,14 @@ async function atualizarVoluntario(id, dados) {
     body: JSON.stringify(dados),
   });
   return resposta.dados;
+}
+
+/** Marca (true) ou desmarca (false) o voluntário como "Não ativo". */
+async function definirVoluntarioNaoAtivo(id, naoAtivo) {
+  return apiFetch(`voluntarios.php?id=${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ naoAtivo }),
+  });
 }
 
 async function excluirVoluntario(id) {
@@ -266,6 +276,12 @@ const STATUS_BADGE = {
   ENCERRADO: 'badge--perigo'
 };
 
+/** Selo "Não ativo": voluntário que desistiu ou de quem não temos dados. */
+function badgeNaoAtivo(v) {
+  if (!v || !v.naoAtivo) return '';
+  return `<span class="badge badge--inativo" title="Desistiu ou sem dados">${icon('userX')}Não ativo</span>`;
+}
+
 /** Selo colorido com o status do contrato. */
 function badgeStatus(status) {
   return `<span class="badge ${STATUS_BADGE[status]}">${icon(STATUS_ICON[status])}${STATUS_LABEL[status]}</span>`;
@@ -278,7 +294,7 @@ const JANELA_RENOVACAO_DIAS = 60; // mesma janela de ContratoService::JANELA_REN
 
 /** Renovação disponível: contrato ainda não renovado, nos últimos 60 dias ou já encerrado. */
 function podeRenovarContrato(v) {
-  if (v.renovado || !v.dataTermino) return false;
+  if (v.naoAtivo || v.renovado || !v.dataTermino) return false;
   const status = calcularStatusContrato(v.dataInicio, v.dataTermino);
   const dias = calcularDiasRestantes(v.dataTermino);
   return status !== 'A_INICIAR' && dias !== null && dias <= JANELA_RENOVACAO_DIAS;
@@ -564,8 +580,8 @@ function ligarTermosAssinados(raiz, v, aoAtualizar) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Documentos pessoais: um arquivo único por voluntário (ex.: um PDF   */
-/* com todos juntos) + a lista do que ele contém (AnexoService.php).   */
+/* Documentos pessoais: um ou mais arquivos por voluntário (ex.: um    */
+/* PDF com todos juntos) + a lista do que foi entregue (AnexoService). */
 /* ------------------------------------------------------------------ */
 const TIPOS_DOCUMENTO = {
   rg: 'RG',
@@ -575,9 +591,9 @@ const TIPOS_DOCUMENTO = {
   certidao_negativa: 'Certidão Negativa',
 };
 const DOCUMENTOS_ESPERADOS = Object.keys(TIPOS_DOCUMENTO);
-const TAMANHO_MAXIMO_DOCUMENTOS_MB = 20;
+const TAMANHO_MAXIMO_DOCUMENTOS_MB = 50; // por arquivo, igual a AnexoService::TAMANHO_MAXIMO
 
-/** Sem id: o arquivo de todos os voluntários que têm um. Com id: o do voluntário (ou null). */
+/** Sem id: os arquivos de todos os voluntários que têm algum. Com id: os do voluntário (ou null). */
 async function listarAnexos(idVoluntario) {
   const query = idVoluntario ? `?id_voluntario=${encodeURIComponent(idVoluntario)}` : '';
   return (await apiFetch(`anexos.php${query}`)).dados;
@@ -587,8 +603,10 @@ async function acaoAnexo(acao, corpo) {
   return apiFetch(`anexos.php?acao=${acao}`, { method: 'POST', body: JSON.stringify(corpo) });
 }
 
-function urlArquivoAnexo(idVoluntario, baixar = false) {
-  return `${API_BASE}anexos.php?acao=arquivo&id_voluntario=${encodeURIComponent(idVoluntario)}${baixar ? '&baixar=1' : ''}`;
+function urlArquivoAnexo(idVoluntario, idAnexo, baixar = false) {
+  const query = new URLSearchParams({ acao: 'arquivo', id_voluntario: idVoluntario, id_anexo: idAnexo });
+  if (baixar) query.set('baixar', '1');
+  return `${API_BASE}anexos.php?${query}`;
 }
 
 function formatarTamanhoArquivo(bytes) {
@@ -596,7 +614,7 @@ function formatarTamanhoArquivo(bytes) {
   return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1).replace('.', ',')} MB`;
 }
 
-/** Documentos marcados como presentes no arquivo do voluntário. */
+/** Documentos marcados como entregues pelo voluntário. */
 function documentosEntregues(anexo) {
   return anexo ? DOCUMENTOS_ESPERADOS.filter(t => anexo.documentos.includes(t)) : [];
 }
@@ -605,48 +623,46 @@ function documentosEntregues(anexo) {
 function htmlSelosDocumentos(anexo) {
   const entregues = new Set(documentosEntregues(anexo));
   return `<div class="docs-selos">${DOCUMENTOS_ESPERADOS.map(t => `
-    <span class="docs-selo${entregues.has(t) ? ' docs-selo--ok' : ''}" title="${TIPOS_DOCUMENTO[t]}: ${entregues.has(t) ? 'no arquivo' : 'pendente'}">
+    <span class="docs-selo${entregues.has(t) ? ' docs-selo--ok' : ''}" title="${TIPOS_DOCUMENTO[t]}: ${entregues.has(t) ? 'entregue' : 'pendente'}">
       ${icon(entregues.has(t) ? 'checkCircle' : 'file')}${TIPOS_DOCUMENTO[t]}
     </span>`).join('')}</div>`;
 }
 
 /**
- * O arquivo do voluntário (ou a área para anexar) e a lista do que ele contém.
+ * Os arquivos do voluntário, a área para anexar mais e a lista do que foi entregue.
  * As marcações não são salvas a cada clique: ficam pendentes (anexo.pendente)
  * até o botão "Salvar" ou, com salvarAoFechar, até fechar o modal.
  */
 function htmlDocumentosVoluntario(anexo, { salvarAoFechar = false } = {}) {
   const entregues = documentosEntregues(anexo);
   const completo = entregues.length === DOCUMENTOS_ESPERADOS.length;
-  const entrada = `<input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" data-docs-arquivo hidden>`;
 
-  const arquivo = anexo ? `
+  const arquivos = (anexo ? anexo.arquivos : []).map(a => `
     <div class="docs-arquivo-unico">
       <span class="docs-arquivo-unico__icone">${icon('file')}</span>
       <div class="docs-arquivo-unico__info">
-        <a href="${urlArquivoAnexo(anexo.idVoluntario)}" target="_blank" rel="noopener">${escapeHtml(anexo.nomeOriginal)}</a>
-        <small>Enviado em ${formatarDataBR(anexo.dataEnvio.slice(0, 10))}${anexo.tamanho ? ` · ${formatarTamanhoArquivo(anexo.tamanho)}` : ''}</small>
+        <a href="${urlArquivoAnexo(anexo.idVoluntario, a.id)}" target="_blank" rel="noopener">${escapeHtml(a.nomeOriginal)}</a>
+        <small>Enviado em ${formatarDataBR(a.dataEnvio.slice(0, 10))}${a.tamanho ? ` · ${formatarTamanhoArquivo(a.tamanho)}` : ''}</small>
       </div>
       <div class="docs-arquivo-unico__acoes">
-        <a class="btn btn--outline btn--sm" href="${urlArquivoAnexo(anexo.idVoluntario)}" target="_blank" rel="noopener">${icon('eye')} Abrir</a>
-        <a class="btn btn--outline btn--sm" href="${urlArquivoAnexo(anexo.idVoluntario, true)}" download>${icon('download')} Baixar</a>
-        <label class="btn btn--outline btn--sm">${icon('upload')} Substituir${entrada}</label>
-        <button type="button" class="btn btn--danger-suave btn--sm btn--icon-only" data-docs-remover aria-label="Remover arquivo" data-dica="Remover">${icon('trash')}</button>
+        <a class="btn btn--outline btn--sm" href="${urlArquivoAnexo(anexo.idVoluntario, a.id)}" target="_blank" rel="noopener">${icon('eye')} Abrir</a>
+        <a class="btn btn--outline btn--sm" href="${urlArquivoAnexo(anexo.idVoluntario, a.id, true)}" download>${icon('download')} Baixar</a>
+        <button type="button" class="btn btn--danger-suave btn--sm btn--icon-only" data-docs-remover="${a.id}" aria-label="Remover arquivo" data-dica="Remover">${icon('trash')}</button>
       </div>
-    </div>` : `
-    <label class="anexo-soltar" data-docs-soltar>
-      ${icon('upload')}
-      <span><b>Clique para escolher</b> ou arraste o arquivo aqui</span>
-      <small>Um único arquivo com todos os documentos · PDF ou foto (JPG, PNG, WEBP) · até ${TAMANHO_MAXIMO_DOCUMENTOS_MB} MB</small>
-      ${entrada}
-    </label>`;
+    </div>`).join('');
 
   return `
     <div class="docs-voluntario${anexo ? '' : ' docs-voluntario--sem-arquivo'}">
-      ${arquivo}
+      ${arquivos}
+      <label class="anexo-soltar" data-docs-soltar>
+        ${icon('upload')}
+        <span><b>Clique para escolher</b> ou arraste ${anexo ? 'mais arquivos' : 'os arquivos'} aqui</span>
+        <small>Um arquivo com todos os documentos ou vários separados · PDF ou foto (JPG, PNG, WEBP) · até ${TAMANHO_MAXIMO_DOCUMENTOS_MB} MB cada</small>
+        <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple data-docs-arquivo hidden>
+      </label>
       <div class="docs-checklist">
         <div class="docs-checklist__topo">
-          <strong>O arquivo contém:</strong>
+          <strong>Documentos entregues:</strong>
           <span class="docs-voluntario__progresso${completo ? ' docs-voluntario__progresso--completo' : ''}">
             ${icon(completo ? 'checkCircle' : 'file')}<b>${entregues.length} de ${DOCUMENTOS_ESPERADOS.length}</b> documentos
           </span>
@@ -667,7 +683,7 @@ function htmlDocumentosVoluntario(anexo, { salvarAoFechar = false } = {}) {
         </div>
         ${anexo
           ? (salvarAoFechar && !anexo.pendente ? '<small class="termo-card__dica">Marque à vontade: as alterações são salvas ao fechar esta janela.</small>' : '')
-          : '<small class="termo-card__dica">Anexe o arquivo para poder marcar os documentos que ele contém.</small>'}
+          : '<small class="termo-card__dica">Anexe os arquivos para poder marcar os documentos entregues.</small>'}
       </div>
     </div>`;
 }
@@ -680,40 +696,55 @@ async function salvarMarcacoesDocumentos(v, anexo) {
 
 /**
  * Liga os controles de htmlDocumentosVoluntario(). aoAtualizar recebe o
- * novo estado do arquivo do voluntário (null depois de remover) — inclusive
- * marcações ainda não salvas, com pendente: true.
+ * novo estado dos arquivos do voluntário (null depois de remover o último) —
+ * inclusive marcações ainda não salvas, com pendente: true.
  */
 function ligarDocumentosVoluntario(raiz, v, anexo, aoAtualizar) {
-  const executar = async (acao, corpo, mensagemErro) => {
+  // tarefa(registrar) faz as chamadas à API e passa cada resposta a registrar(),
+  // para que um erro no meio de vários envios redesenhe com o que já foi salvo.
+  const executar = async (tarefa, mensagemErro) => {
     raiz.querySelectorAll('input, button').forEach(el => { el.disabled = true; });
     // Vai no bloco (que é redesenhado por aoAtualizar), não na raiz — senão a raiz ficaria bloqueada para sempre.
     raiz.querySelector('.docs-voluntario').classList.add('docs-voluntario--ocupado');
+    let ultima = null;
     try {
-      const resposta = await acaoAnexo(acao, { idVoluntario: v.id, ...corpo });
-      let dados = resposta.dados;
-      // Trocar o arquivo com marcações pendentes: grava as marcações junto, para não perdê-las.
-      if (acao === 'anexar' && anexo && anexo.pendente) dados = await salvarMarcacoesDocumentos(v, anexo);
-      showToast(resposta.mensagem, 'sucesso');
-      aoAtualizar(dados);
+      await tarefa((resposta) => { ultima = resposta; });
+      showToast(ultima.mensagem, 'sucesso');
+      aoAtualizar(ultima.dados);
     } catch (erro) {
       showToast(erro.message || mensagemErro, 'erro');
-      aoAtualizar(anexo); // redesenha no estado anterior
+      aoAtualizar(ultima ? ultima.dados : anexo); // redesenha no último estado salvo
     }
   };
+  const chamar = (acao, corpo) => acaoAnexo(acao, { idVoluntario: v.id, ...corpo });
 
-  const enviar = (arquivo) => {
-    if (!arquivo) return;
-    if (arquivo.size > TAMANHO_MAXIMO_DOCUMENTOS_MB * 1024 * 1024) {
-      showToast(`O arquivo não pode passar de ${TAMANHO_MAXIMO_DOCUMENTOS_MB} MB.`, 'erro');
+  const lerArquivo = arquivo => new Promise((resolve, reject) => {
+    const leitor = new FileReader();
+    leitor.onload = () => resolve(leitor.result);
+    leitor.onerror = () => reject(new Error(`Não foi possível ler o arquivo ${arquivo.name}.`));
+    leitor.readAsDataURL(arquivo);
+  });
+
+  const enviar = (lista) => {
+    const arquivos = [...lista];
+    if (arquivos.length === 0) return;
+    const grandes = arquivos.filter(a => a.size > TAMANHO_MAXIMO_DOCUMENTOS_MB * 1024 * 1024);
+    if (grandes.length) {
+      showToast(`Cada arquivo pode ter até ${TAMANHO_MAXIMO_DOCUMENTOS_MB} MB: ${grandes.map(a => a.name).join(', ')}.`, 'erro');
       return;
     }
-    const leitor = new FileReader();
-    leitor.onload = () => executar('anexar', { nomeOriginal: arquivo.name, arquivo: leitor.result }, 'Não foi possível anexar o arquivo.');
-    leitor.onerror = () => showToast('Não foi possível ler o arquivo.', 'erro');
-    leitor.readAsDataURL(arquivo);
+    executar(async (registrar) => {
+      // Marcações pendentes são gravadas antes, para os novos arquivos já herdarem a lista.
+      if (anexo && anexo.pendente) registrar({ dados: await salvarMarcacoesDocumentos(v, anexo) });
+      // Um por vez: cada envio pode chegar a ~70 MB em base64.
+      for (const [i, arquivo] of arquivos.entries()) {
+        const resposta = await chamar('anexar', { nomeOriginal: arquivo.name, arquivo: await lerArquivo(arquivo) });
+        registrar(arquivos.length > 1 ? { ...resposta, mensagem: `${i + 1} de ${arquivos.length} arquivos anexados.` } : resposta);
+      }
+    }, 'Não foi possível anexar o arquivo.');
   };
 
-  raiz.querySelector('[data-docs-arquivo]').addEventListener('change', (e) => enviar(e.target.files[0]));
+  raiz.querySelector('[data-docs-arquivo]').addEventListener('change', (e) => enviar(e.target.files));
 
   const soltar = raiz.querySelector('[data-docs-soltar]');
   if (soltar) {
@@ -722,8 +753,7 @@ function ligarDocumentosVoluntario(raiz, v, anexo, aoAtualizar) {
     soltar.addEventListener('drop', (e) => {
       e.preventDefault();
       soltar.classList.remove('anexo-soltar--ativo');
-      if (e.dataTransfer.files.length > 1) showToast('Envie um único arquivo com todos os documentos.', 'erro');
-      else enviar(e.dataTransfer.files[0]);
+      enviar(e.dataTransfer.files);
     });
   }
 
@@ -739,18 +769,25 @@ function ligarDocumentosVoluntario(raiz, v, anexo, aoAtualizar) {
 
   const salvar = raiz.querySelector('[data-docs-salvar]');
   if (salvar) {
-    salvar.addEventListener('click', () => executar('documentos', { documentos: anexo.documentos }, 'Não foi possível salvar a lista de documentos.'));
+    salvar.addEventListener('click', () => executar(
+      async registrar => registrar(await chamar('documentos', { documentos: anexo.documentos })),
+      'Não foi possível salvar a lista de documentos.'));
   }
 
-  const remover = raiz.querySelector('[data-docs-remover]');
-  if (remover) {
-    remover.addEventListener('click', () => showConfirm({
+  raiz.querySelectorAll('[data-docs-remover]').forEach(botao => {
+    const ultimo = anexo.arquivos.length === 1;
+    const nome = anexo.arquivos.find(a => String(a.id) === botao.dataset.docsRemover)?.nomeOriginal || 'arquivo';
+    botao.addEventListener('click', () => showConfirm({
       titulo: 'Remover arquivo',
-      mensagem: 'O arquivo com os documentos será apagado e a lista do que ele contém será desmarcada. Deseja continuar?',
+      mensagem: `O arquivo "${nome}" será apagado${ultimo ? ' e, como é o último, a lista de documentos entregues será desmarcada' : ''}. Deseja continuar?`,
       textoConfirmar: 'Remover',
-      onConfirm: () => executar('remover', {}, 'Não foi possível remover o arquivo.'),
+      onConfirm: () => executar(async (registrar) => {
+        // Com outros arquivos ficando, grava antes as marcações pendentes para não perdê-las.
+        if (!ultimo && anexo.pendente) registrar({ dados: await salvarMarcacoesDocumentos(v, anexo) });
+        registrar(await chamar('remover', { idAnexo: Number(botao.dataset.docsRemover) }));
+      }, 'Não foi possível remover o arquivo.'),
     }));
-  }
+  });
 }
 
 /* ------------------------------------------------------------------ */

@@ -1,15 +1,15 @@
 <?php
 /**
  * api/anexos.php
- * Arquivo único com os documentos pessoais de cada voluntário
+ * Arquivos com os documentos pessoais de cada voluntário
  * (ver services/AnexoService.php).
  *
- *   GET  /api/anexos.php                         -> o arquivo de todos os voluntários que têm um
- *   GET  /api/anexos.php?id_voluntario=5         -> o do voluntário (ou null)
- *   GET  /api/anexos.php?acao=arquivo&id_voluntario=5[&baixar=1]  -> o arquivo anexado
+ *   GET  /api/anexos.php                         -> os arquivos de todos os voluntários que têm algum
+ *   GET  /api/anexos.php?id_voluntario=5         -> os do voluntário (ou null)
+ *   GET  /api/anexos.php?acao=arquivo&id_voluntario=5&id_anexo=12[&baixar=1]  -> um arquivo anexado
  *   POST /api/anexos.php?acao=anexar      {"idVoluntario": 5, "nomeOriginal": "docs.pdf", "arquivo": "data:application/pdf;base64,..."}
  *   POST /api/anexos.php?acao=documentos  {"idVoluntario": 5, "documentos": ["rg", "cpf"]}
- *   POST /api/anexos.php?acao=remover     {"idVoluntario": 5}
+ *   POST /api/anexos.php?acao=remover     {"idVoluntario": 5, "idAnexo": 12}
  */
 
 declare(strict_types=1);
@@ -38,8 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($acao, ['anexar', 'documen
             $mensagem = 'Lista de documentos atualizada.';
             break;
         default:
-            $erros = $servico->remover($idVoluntario);
-            $mensagem = 'Arquivo de documentos removido.';
+            $erros = $servico->remover($idVoluntario, (int) ($dados['idAnexo'] ?? 0));
+            $mensagem = 'Arquivo removido.';
     }
 
     if (!empty($erros)) {
@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($acao, ['anexar', 'documen
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && $acao === 'arquivo') {
-    $arquivo = $servico->arquivo((int) ($_GET['id_voluntario'] ?? 0));
+    $arquivo = $servico->arquivo((int) ($_GET['id_voluntario'] ?? 0), (int) ($_GET['id_anexo'] ?? 0));
     if ($arquivo === null) {
         responderJson(['sucesso' => false, 'mensagem' => 'Arquivo não encontrado.'], 404);
     }

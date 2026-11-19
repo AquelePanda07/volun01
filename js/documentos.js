@@ -1,15 +1,15 @@
 /**
  * documentos.js
- * Página "Documentos": situação do arquivo único de documentos pessoais de cada
+ * Página "Documentos": situação dos arquivos de documentos pessoais de cada
  * voluntário (RG, CPF, comprovante de luz, histórico escolar e certidão
- * negativa juntos) e do que ele contém. "Ver / anexar" abre o arquivo e a lista
+ * negativa) e do que foi entregue. "Ver / anexar" abre os arquivos e a lista
  * do voluntário num modal, com os mesmos controles da página de detalhes.
  *
  * Aceita ?id=5 na URL para abrir já posicionado no voluntário.
  */
 
 let TODOS_VOLUNTARIOS = [];
-/** id do voluntário => o arquivo de documentos dele (só quem tem um). */
+/** id do voluntário => os arquivos de documentos dele (só quem tem algum). */
 const ANEXOS_POR_VOLUNTARIO = new Map();
 let FILTRO_SITUACAO = '';
 const ID_DESTACADO = new URLSearchParams(location.search).get('id');
@@ -122,7 +122,7 @@ function renderizarResumo() {
   const total = DOCUMENTOS_ESPERADOS.length;
   const cards = [
     { valor: todos.filter(v => qtdEntregues(v) === total).length, total: todos.length, label: 'Com todos os documentos', classe: 'card-stat--sucesso', icone: 'checkCircle' },
-    { valor: todos.filter(v => anexoDe(v) && qtdEntregues(v) < total).length, label: 'Arquivo com documento faltando', classe: 'card-stat--alerta', icone: 'alert' },
+    { valor: todos.filter(v => anexoDe(v) && qtdEntregues(v) < total).length, label: 'Com documento faltando', classe: 'card-stat--alerta', icone: 'alert' },
     { valor: todos.filter(v => !anexoDe(v)).length, label: 'Sem arquivo anexado', classe: '', icone: 'file' },
     { valor: ANEXOS_POR_VOLUNTARIO.size, total: todos.length, label: 'Com arquivo anexado', classe: '', icone: 'paperclip' },
   ];
@@ -156,7 +156,7 @@ function htmlLinha(v, i) {
   `;
 }
 
-/** Modal com o arquivo de documentos do voluntário (anexar, abrir, baixar, substituir, remover) e a lista do que ele contém. */
+/** Modal com os arquivos de documentos do voluntário (anexar mais, abrir, baixar, remover) e a lista do que foi entregue. */
 function abrirModalDocumentos(v) {
   // Ao fechar: não deixa fechar no meio de um envio; marcações pendentes são gravadas de uma vez.
   const aoFechar = () => {

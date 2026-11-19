@@ -110,6 +110,15 @@ class ContratoService
         );
         $linha['Data Cadastro'] = $atual['Data Cadastro'] ?? date('Y-m-d H:i:s');
 
+        // Renovação editada no formulário (corrigir as datas, marcar ou desfazer).
+        // Desfazer mantém o termo de renovação anexado: ele só fica escondido.
+        if (array_key_exists('renovado', $dados)) {
+            $renovado = !empty($dados['renovado']);
+            $linha['Renovado'] = $renovado ? 'TRUE' : '';
+            $linha['Data Renovacao'] = $renovado ? (string) ($dados['dataRenovacao'] ?? '') : '';
+            $linha['Termino Anterior'] = $renovado ? (string) ($dados['terminoAnterior'] ?? '') : '';
+        }
+
         $this->dados->updateContrato((int) $atual['ID'], $linha);
         return $this->paraCamelCase($linha);
     }
@@ -169,8 +178,10 @@ class ContratoService
         }
         // Os 6 meses contam a partir do término atual ou de hoje (à escolha
         // no modal), então o limite é 6 meses após a mais recente das duas.
-        $base = max($terminoAtual, date('Y-m-d'));
-        if (Validator::diferencaEmMeses($base, $novaDataTermino) > 6) {
+        // Compara com o teto em vez de medir a diferença: o diff é absoluto, e
+        // uma data anterior a hoje (contrato vencido renovado pelo término)
+        // seria lida como "mais de 6 meses".
+        if ($novaDataTermino > Validator::somarMeses(max($terminoAtual, date('Y-m-d')), 6)) {
             return ['A renovação não pode prorrogar o contrato por mais de 6 meses.'];
         }
         return [];
