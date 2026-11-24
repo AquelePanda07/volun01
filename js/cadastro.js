@@ -353,26 +353,31 @@ function validarFormulario() {
   const secretaria = obterValorComOutra('secretaria');
   const nomeSecretario = obterValorComOutra('nomeSecretario');
 
+  // Na edição os campos não são obrigatórios (só o nome): o que for preenchido
+  // ainda precisa estar num formato válido.
+  const exigir = !ID_EDICAO;
+  const faltando = (vazio) => exigir && Boolean(vazio);
+
   // Foto, RG, órgão expedidor e data de expedição são opcionais.
   marcar('nome', nome.length === 0);
-  marcar('cpf', !validarCPF(cpf));
+  marcar('cpf', (exigir || cpf.length > 0) && !validarCPF(cpf));
   marcar('rgDataExpedicao', Boolean(rgDataExpedicao && dataNascimento && rgDataExpedicao < dataNascimento));
-  marcar('dataNascimento', !dataNascimento);
-  marcar('sexo', !sexo);
-  marcar('escolaridade', !escolaridade);
-  marcar('estadoCivil', !estadoCivil);
+  marcar('dataNascimento', faltando(!dataNascimento));
+  marcar('sexo', faltando(!sexo));
+  marcar('escolaridade', faltando(!escolaridade));
+  marcar('estadoCivil', faltando(!estadoCivil));
   marcar('contato', contato.length > 0 && contato.length !== 10 && contato.length !== 11);
 
-  marcar('cargaHoraria', !cargaHoraria);
-  marcar('cargo', cargo.length === 0);
-  marcar('cep', cep.replace(/\D/g, '').length !== 8);
-  marcar('logradouro', logradouro.length === 0);
-  marcar('numero', numero.length === 0);
-  marcar('bairro', bairro.length === 0);
-  marcar('cidade', cidade.length === 0);
-  marcar('estado', !estado);
-  marcar('localPrestacao', localPrestacao.length === 0);
-  marcar('dataInicio', !dataInicio);
+  marcar('cargaHoraria', faltando(!cargaHoraria));
+  marcar('cargo', faltando(cargo.length === 0));
+  marcar('cep', (exigir || cep.length > 0) && cep.replace(/\D/g, '').length !== 8);
+  marcar('logradouro', faltando(logradouro.length === 0));
+  marcar('numero', faltando(numero.length === 0));
+  marcar('bairro', faltando(bairro.length === 0));
+  marcar('cidade', faltando(cidade.length === 0));
+  marcar('estado', faltando(!estado));
+  marcar('localPrestacao', faltando(localPrestacao.length === 0));
+  marcar('dataInicio', faltando(!dataInicio));
 
   // Renovado: o novo término vai até 6 meses além do término anterior ou da data
   // da renovação. O período original é histórico (pode ter vindo da planilha
@@ -385,18 +390,23 @@ function validarFormulario() {
     marcar('dataRenovacao', !dataRenovacao);
     const limite = terminoAnterior && dataRenovacao ? somarMesesISO([terminoAnterior, dataRenovacao].sort().pop(), 6) : '';
     marcar('dataTermino', !dataTermino || !terminoAnterior || dataTermino <= terminoAnterior || Boolean(limite && dataTermino > limite));
+  } else if (dataInicio && dataTermino) {
+    const datasValidas = dataTermino > dataInicio;
+    const dentroDoPrazoMaximo = diferencaEmMeses(dataInicio, dataTermino) <= 6;
+    marcar('dataTermino', !datasValidas || !dentroDoPrazoMaximo);
   } else {
-    const datasValidas = dataInicio && dataTermino && dataTermino > dataInicio;
-    const dentroDoPrazoMaximo = dataInicio && dataTermino && diferencaEmMeses(dataInicio, dataTermino) <= 6;
-    marcar('dataTermino', !dataTermino || !datasValidas || !dentroDoPrazoMaximo);
+    marcar('dataTermino', faltando(true));
   }
 
-  marcar('horarioInicio', !horarioInicio);
-  const horariosValidos = horarioInicio && horarioTermino && horarioTermino > horarioInicio;
-  marcar('horarioTermino', !horarioTermino || !horariosValidos);
+  marcar('horarioInicio', faltando(!horarioInicio));
+  if (horarioInicio && horarioTermino) {
+    marcar('horarioTermino', horarioTermino <= horarioInicio);
+  } else {
+    marcar('horarioTermino', faltando(!horarioTermino));
+  }
 
-  marcar('secretaria', !secretaria);
-  marcar('nomeSecretario', nomeSecretario.length === 0);
+  marcar('secretaria', faltando(!secretaria));
+  marcar('nomeSecretario', faltando(nomeSecretario.length === 0));
 
   return valido;
 }

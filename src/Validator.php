@@ -39,11 +39,15 @@ class Validator
      * @return string[] Lista de mensagens de erro (vazia quando válido).
      */
     /** Contrato renovado (renovado + terminoAnterior + dataRenovacao): ver validarRenovacao(). */
-    public static function validarVoluntario(array $dados): array
+    public static function validarVoluntario(array $dados, bool $exigirObrigatorios = true): array
     {
         $erros = [];
 
-        foreach (self::CAMPOS_OBRIGATORIOS as $campo => $rotulo) {
+        // Na edição de um perfil só o nome é exigido; os demais campos, quando
+        // preenchidos, continuam passando pelas checagens de formato abaixo.
+        $obrigatorios = $exigirObrigatorios ? self::CAMPOS_OBRIGATORIOS : ['nome' => self::CAMPOS_OBRIGATORIOS['nome']];
+
+        foreach ($obrigatorios as $campo => $rotulo) {
             $valor = $dados[$campo] ?? null;
             if (is_array($valor)) {
                 if (count($valor) === 0) {

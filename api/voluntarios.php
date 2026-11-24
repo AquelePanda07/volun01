@@ -63,7 +63,7 @@ switch ($metodo) {
             $dados += array_intersect_key($existente, array_flip(['renovado', 'terminoAnterior', 'dataRenovacao']));
         }
 
-        $erros = Validator::validarVoluntario($dados);
+        $erros = Validator::validarVoluntario($dados, false);
         if (!empty($dados['cpf']) && $repositorio->existeCpf((string) $dados['cpf'], $id)) {
             $erros[] = 'Já existe um voluntário cadastrado com este CPF.';
         }
