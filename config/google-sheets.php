@@ -45,6 +45,9 @@ return [
         'secretarios' => 'Secretarios',
         'documentos' => 'Documentos',
         'anexos' => 'Anexos',
+        'empenhos' => 'Empenhos',
+        'movimentos_empenho' => 'Movimentos Empenho',
+        'lista_empenhos' => 'Lista Empenhos',
     ],
 
     // Colunas (cabeçalho da linha 1) de cada aba, na ordem exigida pela
@@ -88,6 +91,27 @@ return [
         'Anexos' => [
             'ID', 'ID Voluntario', 'Documentos', 'Nome Original', 'Caminho Arquivo',
             'Tamanho', 'Data Envio',
+        ],
+        // Controle de Empenhos (ver services/EmpenhoService.php). Valores em reais com
+        // 2 casas e ponto decimal ("1102.50"); Tipo: ORIGINAL | REFORCO.
+        'Empenhos' => [
+            'ID', 'ID Voluntario', 'ID Contrato', 'Ano', 'Numero Empenho', 'Data Empenho',
+            'Valor', 'Tipo', 'Lotacao', 'Fonte Recurso', 'Observacao', 'Data Cadastro',
+        ],
+        // Cada pagamento mensal vira UM movimento por empenho de onde saiu o dinheiro
+        // (um mês pago com dois empenhos = duas linhas). Tipo: PAGAMENTO | ANULACAO;
+        // o valor é sempre positivo (a anulação só aparece negativa na tela).
+        'Movimentos Empenho' => [
+            'ID', 'ID Empenho', 'ID Voluntario', 'Tipo', 'Competencia', 'Valor',
+            'Dias Trabalhados', 'Data', 'Observacao', 'Data Cadastro',
+        ],
+        // Lista de Empenhos (aba "Lista da planilha" de empenhos.html): retrato da planilha do ano, uma linha
+        // por voluntário e lotação, importada por scripts/importar_empenhos.php.
+        // "Empenhos" é JSON: [{"numero":"736","valor":"8400.00"}, ...]. Valores em reais
+        // com 2 casas e ponto decimal; Situacao: Ativo | Anulado.
+        'Lista Empenhos' => [
+            'ID', 'ID Voluntario', 'Nome', 'Lotacao', 'Ano', 'Empenhos',
+            'Total Empenhado', 'Pago', 'Anulado', 'Saldo', 'Situacao',
         ],
     ],
 ];

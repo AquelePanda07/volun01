@@ -94,6 +94,8 @@ async function apiFetch(caminho, opcoes = {}) {
   if (!resposta.ok || !corpo.sucesso) {
     const erro = new ErroApi(corpo.mensagem || 'Ocorreu um erro ao comunicar com o servidor.', corpo.erros);
     erro.falhas = corpo.falhas || [];
+    erro.status = resposta.status;
+    erro.avisos = corpo.avisos || []; // 409: aviso que pede confirmação (ex.: competência já lançada)
     throw erro;
   }
   return corpo;
@@ -1024,6 +1026,7 @@ const NAV_LINKS = [
   { href: 'termos.html', icone: 'fileCheck', texto: 'Termos de Adesão' },
   { href: 'documentos.html', icone: 'paperclip', texto: 'Documentos' },
   { href: 'frequencia.html', icone: 'calendar', texto: 'Quadro de Frequência' },
+  { href: 'empenhos.html', icone: 'list', texto: 'Controle de Empenhos' },
   { href: 'por-cargo.html', icone: 'briefcase', texto: 'Por Cargo' },
   { href: 'cadastro.html', icone: 'plus', texto: 'Adicionar Voluntário' },
 ];

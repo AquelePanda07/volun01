@@ -67,6 +67,20 @@ abstract class RepositorioDados
         ));
     }
 
+    /**
+     * Executa várias gravações como uma unidade: no MySQL, ou grava tudo ou
+     * nada (transação). Armazenamentos sem transação (Google Sheets) só
+     * executam a função.
+     *
+     * @template T
+     * @param callable(): T $operacao
+     * @return T
+     */
+    public function emTransacao(callable $operacao)
+    {
+        return $operacao();
+    }
+
     // ------------------------------------------------------------------
     // Métodos nomeados (especificação, seção 22)
     // ------------------------------------------------------------------

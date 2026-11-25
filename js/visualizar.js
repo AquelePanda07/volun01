@@ -117,6 +117,7 @@ function renderizarVoluntario(v) {
         <div class="perfil-topo__acoes">
           ${podeRenovarContrato(v) ? `<button class="btn btn--outline btn--renovar" id="btn-renovar">${icon('repeat')} Marcar como renovado</button>` : ''}
           <a class="btn" href="gerar-termo.html?id=${id}">${icon('file')} Gerar Termo</a>
+          <button class="btn btn--outline" id="btn-empenhos">${icon('list')} Empenhos</button>
           <a class="btn btn--outline" href="cadastro.html?id=${id}">${icon('edit')} Editar</a>
           <button class="btn btn--danger-suave" id="btn-excluir">${icon('trash')} Excluir</button>
         </div>
@@ -205,6 +206,9 @@ function renderizarVoluntario(v) {
       renderizarDocumentosPessoais();
     }));
   }
+
+  // Extrato de empenhos (js/extrato-empenhos.js)
+  document.getElementById('btn-empenhos').addEventListener('click', () => abrirExtratoEmpenhos(v.id));
 
   document.getElementById('btn-excluir').addEventListener('click', () => {
     showConfirm({

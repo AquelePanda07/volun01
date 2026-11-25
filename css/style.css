@@ -1754,3 +1754,120 @@ body.previa-tela-cheia { overflow: hidden; }
   .freq-ocorrencia input[type="text"] { grid-column: 1; }
   .freq-barra { flex-direction: column; align-items: stretch; text-align: center; }
 }
+
+/* ------------------------------------------------------------------ */
+/* Controle de Empenhos (empenhos.html, extrato-empenhos.js)            */
+/* ------------------------------------------------------------------ */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
+.emp-abas { margin-bottom: 1rem; }
+.emp-check { display: inline-flex; align-items: center; gap: .45rem; font-size: .86rem; cursor: pointer; padding-bottom: .55rem; }
+.emp-check input { width: 1.05rem; height: 1.05rem; accent-color: var(--cor-primaria); }
+.emp-legenda { margin-top: .4rem; align-items: center; }
+.emp-card-valor { font-size: 1.15rem; white-space: nowrap; }
+#emp-cards { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+#emp-cards .card-stat { padding: 1rem; gap: .75rem; }
+#emp-cards .card-stat__icon { width: 42px; height: 42px; }
+.emp-competencia { display: flex; gap: .4rem; }
+.emp-competencia select { flex: 1; min-width: 0; }
+.emp-competencia input { width: 5.5rem; }
+
+.emp-grupo { margin-bottom: 1.25rem; overflow: hidden; }
+.emp-grupo__titulo { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; margin: 0; padding: .95rem 1.2rem; font-size: 1rem; color: var(--cor-titulo); border-bottom: 1px solid var(--cor-borda); }
+.emp-grupo__titulo .contador-resultados { margin-left: auto; font-weight: 500; }
+.emp-grupo--geral { border-color: var(--cor-primaria); }
+.emp-rolagem { overflow-x: auto; }
+
+.emp-tabela { width: 100%; border-collapse: collapse; font-size: .82rem; font-variant-numeric: tabular-nums; }
+.emp-tabela th, .emp-tabela td { padding: .5rem .55rem; border-bottom: 1px solid var(--cor-borda); text-align: left; vertical-align: top; }
+.emp-tabela th { background: var(--cor-superficie-2); color: var(--cor-texto-suave); font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.emp-tabela .num { text-align: right; white-space: nowrap; }
+.emp-tabela tbody tr { transition: background var(--transicao); }
+.emp-tabela tbody tr:hover { background: var(--cor-primaria-clara); }
+.emp-tabela tbody tr:focus-visible { outline: 2px solid var(--cor-primaria); outline-offset: -2px; }
+.emp-tabela tfoot td { font-weight: 700; background: var(--cor-superficie-2); border-bottom: none; }
+.emp-tabela--painel { min-width: 1280px; }
+.emp-tabela--painel .emp-col-nome { position: sticky; left: 0; z-index: 1; min-width: 13rem; max-width: 16rem; background: var(--cor-superficie); }
+.emp-tabela--painel th.emp-col-nome, .emp-tabela--painel tfoot .emp-col-nome { background: var(--cor-superficie-2); }
+.emp-tabela--painel tbody tr:hover .emp-col-nome { background: var(--cor-primaria-clara); }
+.emp-col-nome strong { display: block; }
+.emp-col-nome .badge { margin-top: .25rem; font-size: .68rem; padding: .15rem .5rem; }
+.emp-col-empenhos span { display: block; white-space: nowrap; }
+.emp-col-empenhos b { color: var(--cor-texto-suave); font-weight: 600; }
+.emp-mes span { display: block; }
+.emp-mes--vazio { color: var(--cor-borda); }
+.emp-anulado { color: var(--cor-perigo); }
+.emp-saldo strong { color: var(--cor-titulo); }
+.emp-linha--anulada td { color: var(--cor-texto-suave); }
+.emp-linha--anulada .emp-col-nome strong { text-decoration: line-through; text-decoration-color: var(--cor-perigo); }
+.emp-linha--a-anular { box-shadow: inset 3px 0 0 var(--cor-alerta); }
+.emp-linha--a-anular .emp-saldo strong { color: var(--cor-alerta); }
+.emp-sub { display: block; font-size: .74rem; color: var(--cor-texto-suave); }
+.emp-vazio { text-align: center; color: var(--cor-texto-suave); padding: 1rem !important; }
+
+/* Lançamento em lote */
+.emp-tabela--lote { min-width: 860px; }
+.emp-tabela--lote td { vertical-align: middle; }
+.emp-input { width: 6.5rem; padding: .35rem .5rem; font-size: .84rem; text-align: right; }
+.emp-input--dias { width: 4.5rem; }
+.emp-col-dist { min-width: 15rem; }
+.emp-parte { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.emp-parte + .emp-parte { margin-top: .3rem; }
+.emp-parte small { color: var(--cor-texto-suave); }
+.emp-col-situacao { min-width: 10rem; }
+.emp-col-situacao .badge { white-space: normal; }
+.emp-linha--desmarcada td:not(.col-selecao) { opacity: .5; }
+.emp-linha--sem-saldo td { opacity: .7; }
+.emp-link { padding: 0; border: none; background: none; font: inherit; font-weight: 700; color: var(--cor-texto); cursor: pointer; text-align: left; }
+.emp-link:hover { color: var(--cor-primaria); text-decoration: underline; }
+.emp-lote-barra .btn:disabled { opacity: .55; cursor: not-allowed; }
+
+/* Extrato (modal) */
+.modal-box.emp-extrato { max-width: 980px; }
+.emp-extrato__meta { margin: .2rem 0 .4rem; font-size: .86rem; }
+.emp-extrato__selos { display: flex; flex-wrap: wrap; gap: .35rem; }
+.emp-extrato__selos .badge + .badge { margin-left: 0; }
+.emp-extrato__acoes { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0 .4rem; }
+.emp-extrato__titulo { margin: 1.1rem 0 .5rem; font-size: .82rem; text-transform: uppercase; letter-spacing: .05em; color: var(--cor-texto-suave); }
+.emp-tabela-wrapper { box-shadow: none; border-radius: var(--raio); }
+.emp-tabela--extrato { min-width: 640px; }
+.emp-tabela--extrato .acoes-cel { white-space: nowrap; text-align: right; }
+.emp-tabela--extrato .acoes-cel .btn + .btn { margin-left: .25rem; }
+.emp-alerta { align-items: center; margin: .8rem 0 0; border-color: color-mix(in srgb, var(--cor-alerta) 40%, transparent); background: var(--cor-alerta-fundo); }
+.emp-alerta > .icon { color: var(--cor-alerta); }
+.emp-resumo { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .6rem; margin-top: 1rem; }
+.emp-resumo > div { padding: .7rem .85rem; border: 1px solid var(--cor-borda); border-radius: var(--raio); background: var(--cor-superficie-2); }
+.emp-resumo span { display: block; font-size: .74rem; color: var(--cor-texto-suave); }
+.emp-resumo strong { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.emp-resumo__saldo { border-color: var(--cor-primaria) !important; background: var(--cor-primaria-clara) !important; }
+.emp-lista-avisos { margin: .6rem 0 0 1.1rem; padding: 0; font-size: .9rem; }
+.emp-lista-avisos li + li { margin-top: .35rem; }
+.emp-lista-avisos--erro { color: var(--cor-perigo); }
+.emp-form { margin-top: 1rem; }
+.emp-distribuicao { display: flex; flex-direction: column; gap: .35rem; }
+.emp-distribuicao__linha { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .45rem .6rem; border: 1px solid var(--cor-borda); border-radius: var(--raio); font-weight: 400 !important; }
+.emp-distribuicao__linha input { width: 8rem; text-align: right; }
+.emp-distribuicao__soma { font-size: .8rem; color: var(--cor-texto-suave); }
+.emp-distribuicao__soma--erro { color: var(--cor-perigo); }
+.emp-modos { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin-top: .8rem; }
+.emp-modos label { display: flex; gap: .55rem; align-items: flex-start; padding: .7rem .8rem; border: 1px solid var(--cor-borda); border-radius: var(--raio); cursor: pointer; }
+.emp-modos label:has(input:checked) { border-color: var(--cor-perigo); background: var(--cor-perigo-fundo); }
+.emp-modos small { display: block; font-size: .76rem; color: var(--cor-texto-suave); }
+.emp-anulacao__resumo { margin: .8rem 0 0; font-size: .88rem; font-weight: 600; }
+
+@media (max-width: 620px) {
+  .emp-resumo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .emp-modos { grid-template-columns: 1fr; }
+  .emp-tabela--painel .emp-col-nome { min-width: 9.5rem; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Lista de Empenhos (lista-empenhos.html) — reaproveita os .emp-*      */
+/* ------------------------------------------------------------------ */
+.lemp-cards { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.lemp-cards .card-stat { padding: 1rem; gap: .75rem; }
+.lemp-cards .card-stat__icon { width: 42px; height: 42px; }
+.lemp-tabela { min-width: 860px; }
+.lemp-tabela .emp-col-nome { min-width: 15rem; }
+.lemp-tabela td .badge { font-size: .7rem; padding: .15rem .55rem; }
+.lemp-tabela .emp-linha--anulada .emp-link { text-decoration: line-through; text-decoration-color: var(--cor-perigo); }
+.lemp-nota { margin: .4rem 0 1rem; font-size: .8rem; color: var(--cor-texto-suave); }

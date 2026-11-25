@@ -57,12 +57,13 @@ pelo PHP, que é o único lugar que lê o arquivo de credenciais.
 ```
 start-server.bat        Inicia o sistema (PHP embutido + navegador) com duplo clique
 index.html, voluntarios.html, por-cargo.html, cadastro.html, visualizar.html,
-gerar-termo.html
+gerar-termo.html, empenhos.html
                          Páginas do front-end (HTML + JS puro)
 api/                     Endpoints HTTP: voluntarios, documentos, planilha,
-                         cargos, secretarias, locais, secretarios
+                         cargos, secretarias, locais, secretarios, empenhos
 config/
   database.php           Escolha do banco (mysql | google_sheets) e conexão com o MySQL
+  empenhos.php           Valor do dia por jornada e demais parâmetros do Controle de Empenhos
   google-sheets.php      ID da planilha e definição das entidades/colunas (usada pelos dois bancos)
   credentials/           Senha do MySQL (mysql.json) e chave do Google (NÃO versionadas)
 services/
@@ -73,7 +74,9 @@ services/
   ContratoService.php      Regras de negócio da aba "Contratos"
   DocumentoService.php     Regras de negócio da aba "Documentos"
   ListaSimplesService.php  CRUD genérico das abas de apoio (Cargos/Secretarias/Locais/Secretarios)
+  EmpenhoService.php       Regras do Controle de Empenhos (saldos, distribuição, anulação)
 src/
+  EmpenhoExportacao.php    Exportação do painel de empenhos (.xlsx / CSV)
   VoluntarioRepository.php Facade que junta voluntário + contrato (usado pelas rotas)
   DocumentoRepository.php  Facade sobre DocumentoService
   TermoAdesaoService.php   Geração do Termo de Adesão (PDF/DOCX)
@@ -83,19 +86,24 @@ uploads/voluntarios/     Fotos enviadas no cadastro (criado automaticamente)
 documentos/termos/       Termos de Adesão gerados em PDF/DOCX (criado automaticamente)
 logs/                    app.log com os erros ocorridos na API (criado automaticamente)
 sql/schema.sql           Estrutura das tabelas MySQL (referência; o sistema cria sozinho)
-scripts/                 Migração Sheets -> MySQL e (re)geração do modelo DOCX
+scripts/                 Migração Sheets -> MySQL, (re)geração do modelo DOCX e
+                         importação da planilha de empenhos
+importacao/              Planilhas de dados pessoais para importar (NÃO versionada)
 router.php               Bloqueia arquivos internos quando se usa o servidor embutido do PHP
 js/app.js                Núcleo do front-end: monta o menu lateral/topo de todas as
                          páginas, cliente da API, ícones, modais, toasts e tema
+js/extrato-empenhos.js   Modal "Extrato de empenhos" (usado em empenhos.html e visualizar.html)
 js/*.js, css/style.css   Script de cada página (painel, voluntarios, por-cargo, cadastro,
-                         visualizar, gerar-termo) e o estilo único do sistema
+                         visualizar, gerar-termo, empenhos) e o estilo único do sistema
 ```
 
 ## 1. Requisitos
 
 - [XAMPP](https://www.apachefriends.org/) (Apache + PHP 8.1+ + MySQL/MariaDB).
   O PHP precisa das extensões `curl`, `mbstring`, `zip`, `dom`, `xml`,
-  `fileinfo` e `pdo_mysql`.
+  `fileinfo`, `pdo_mysql` e `gd` (esta para o PhpSpreadsheet do Controle de
+  Empenhos: em `C:\xampp\php\php.ini`, tire o `;` de `;extension=gd` e
+  reinicie o Apache).
 - [Composer](https://getcomposer.org/).
 
 ## 2. Instalação
@@ -353,7 +361,67 @@ Adicionar Voluntário → Preencher dados → Salvar (MySQL)
 - Cada geração (PDF ou DOCX) cria uma nova versão no histórico
   (aba `Documentos`), preservando os arquivos anteriores em disco.
 
-## 9. Solução de problemas
+## 9. Controle de Empenhos
+
+Substitui a planilha "CONTROLE DE EMPENHOS VOLUNTARIOS". Menu **Controle de
+Empenhos** (`empenhos.html`) e botão **Empenhos** na tela do voluntário.
+
+- **Painel anual**: filtros por ano e lotação; uma tabela por lotação com os
+  empenhos (nº/valor), jan…dez, total empenhado, pago, anulado e saldo, com
+  totais por lotação e geral. Exporta em Excel (.xlsx) ou CSV.
+  - **Já foi anulado**: voluntário fora (não ativo ou contrato
+    encerrado) com o saldo anulado.
+  - **Saldo a anular**: voluntário fora que ainda tem saldo.
+- **Lançamento mensal**: escolhe competência e lotação; aparecem os
+  voluntários ativos com contrato no mês, com os dias (dias da semana do
+  contrato, sem descontar feriados), o valor sugerido e a divisão entre
+  empenhos. Revise e confirme todos de uma vez (tudo ou nada).
+- **Extrato do voluntário** (modal): empenhos com saldo, histórico de
+  movimentos, novo empenho, lançar pagamento, anular saldo (total ou
+  parcial, com motivo obrigatório) e excluir lançamentos para correção.
+
+### Regras
+
+- Saldo do empenho = valor − pagamentos − anulações; saldo do voluntário =
+  soma dos saldos dos empenhos. Contas em centavos; valores gravados como
+  texto com 2 casas (`1102.50`).
+- Valor do mês = dias trabalhados × valor do dia da jornada (40h R$ 70,00,
+  30h R$ 52,50, 20h R$ 35,00 = R$ 8,75/hora; `config/empenhos.php`). Aceita
+  meio dia. O valor pode ser editado.
+- O pagamento sai do empenho mais antigo com saldo e é dividido quando um só
+  não basta. Cada parte vira um movimento (um mês pago com dois empenhos =
+  duas linhas em `movimentos_empenho`). A divisão pode ser alterada antes de
+  gravar.
+- O nº do empenho não se repete no mesmo ano; pagamento/anulação não pode
+  passar do saldo; lançar de novo a mesma competência no mesmo empenho pede
+  confirmação.
+- A lotação fica no **empenho** (quem mudou de lotação aparece nas duas).
+
+### Importação da planilha antiga
+
+A planilha tem nomes e valores de pessoas: guarde-a em `importacao/` (fora do
+git) e nunca a commite.
+
+```powershell
+php scripts/importar_empenhos_planilha.php "importacao/CONTROLE DE EMPENHOS VOLUNTARIOS 2026.xlsx" --simular
+php scripts/importar_empenhos_planilha.php "importacao/CONTROLE DE EMPENHOS VOLUNTARIOS 2026.xlsx" --executar
+```
+
+- Liga cada linha ao voluntário pelo nome (sem acentos, espaços extras e
+  números no fim). Nomes com outra grafia vão para
+  `importacao/mapa_nomes.json` (criado com sugestões na primeira simulação):
+  confira os IDs; `null` pula a linha.
+- Divide os pagamentos pelo comentário da célula ("X do empenho N"), pelas
+  parcelas da fórmula (`=1295+245`) ou pela regra automática. Valor negativo
+  = anulação; "− X" fixo na fórmula do TOTAL do 1º semestre = anulação de julho.
+- Ignora o que está fora do quadro (coluna AA em diante e anotações abaixo).
+- O relatório lista nomes não encontrados, comentários que não batem e a
+  comparação do saldo calculado com a coluna TOTAL, explicando cada
+  diferença (erros de fórmula da planilha).
+- `--executar` para se já houver empenhos do ano; `--substituir` apaga os
+  empenhos do ano (e seus movimentos) e importa de novo.
+
+## 10. Solução de problemas
 
 - **"PHP não foi encontrado"** ao rodar `start-server.bat`: instale o PHP e
   adicione-o ao PATH do Windows (a janela fica aberta para você ler a

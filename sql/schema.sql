@@ -124,3 +124,60 @@ CREATE TABLE IF NOT EXISTS `voluntarios` (
   PRIMARY KEY (`id`),
   KEY `idx_cpf` (`cpf`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Controle de Empenhos (services/EmpenhoService.php). Valores em reais com
+-- 2 casas e ponto decimal ('1102.50'); tipo ORIGINAL | REFORCO.
+CREATE TABLE IF NOT EXISTS `empenhos` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `id_voluntario` varchar(255) NOT NULL DEFAULT '',
+  `id_contrato` varchar(255) NOT NULL DEFAULT '',
+  `ano` varchar(255) NOT NULL DEFAULT '',
+  `numero_empenho` varchar(255) NOT NULL DEFAULT '',
+  `data_empenho` varchar(255) NOT NULL DEFAULT '',
+  `valor` varchar(255) NOT NULL DEFAULT '',
+  `tipo` varchar(255) NOT NULL DEFAULT '',
+  `lotacao` varchar(255) NOT NULL DEFAULT '',
+  `fonte_recurso` varchar(255) NOT NULL DEFAULT '',
+  `observacao` varchar(255) NOT NULL DEFAULT '',
+  `data_cadastro` varchar(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  KEY `idx_id_voluntario` (`id_voluntario`),
+  KEY `idx_id_contrato` (`id_contrato`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Um movimento por empenho: um mês pago com dois empenhos gera duas linhas.
+-- tipo PAGAMENTO | ANULACAO; valor sempre positivo; competencia 'AAAA-MM'.
+CREATE TABLE IF NOT EXISTS `movimentos_empenho` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `id_empenho` varchar(255) NOT NULL DEFAULT '',
+  `id_voluntario` varchar(255) NOT NULL DEFAULT '',
+  `tipo` varchar(255) NOT NULL DEFAULT '',
+  `competencia` varchar(255) NOT NULL DEFAULT '',
+  `valor` varchar(255) NOT NULL DEFAULT '',
+  `dias_trabalhados` varchar(255) NOT NULL DEFAULT '',
+  `data` varchar(255) NOT NULL DEFAULT '',
+  `observacao` varchar(255) NOT NULL DEFAULT '',
+  `data_cadastro` varchar(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  KEY `idx_id_empenho` (`id_empenho`),
+  KEY `idx_id_voluntario` (`id_voluntario`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Lista de Empenhos (aba "Lista da planilha" de empenhos.html): uma linha por voluntário e lotação,
+-- importada por scripts/importar_empenhos.php. empenhos = JSON
+-- [{"numero":"736","valor":"8400.00"}, ...]; situacao Ativo | Anulado.
+CREATE TABLE IF NOT EXISTS `lista_empenhos` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `id_voluntario` varchar(255) NOT NULL DEFAULT '',
+  `nome` varchar(255) NOT NULL DEFAULT '',
+  `lotacao` varchar(255) NOT NULL DEFAULT '',
+  `ano` varchar(255) NOT NULL DEFAULT '',
+  `empenhos` varchar(255) NOT NULL DEFAULT '',
+  `total_empenhado` varchar(255) NOT NULL DEFAULT '',
+  `pago` varchar(255) NOT NULL DEFAULT '',
+  `anulado` varchar(255) NOT NULL DEFAULT '',
+  `saldo` varchar(255) NOT NULL DEFAULT '',
+  `situacao` varchar(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  KEY `idx_id_voluntario` (`id_voluntario`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -14,3 +14,6 @@ composer.phar
 *.log
 /cache/
 /backups/
+/importacao/
+# Dados pessoais (nomes e valores) usados nas importações: nunca commitar.
+/dados/

@@ -145,6 +145,27 @@ class MySQLService extends RepositorioDados
         $this->pdo()->prepare("DELETE FROM `{$tabela}` WHERE `id` = ?")->execute([$id]);
     }
 
+    public function emTransacao(callable $operacao)
+    {
+        $pdo = $this->pdo();
+        if ($pdo->inTransaction()) {
+            return $operacao(); // já dentro de uma transação: ela decide o commit
+        }
+        $pdo->beginTransaction();
+        try {
+            $resultado = $operacao();
+            $pdo->commit();
+            return $resultado;
+        } catch (Throwable $e) {
+            // CREATE/ALTER TABLE fecham a transação sozinhos no MySQL; por isso quem
+            // usa emTransacao() deve consultar as tabelas antes (ver EmpenhoService).
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
     // ------------------------------------------------------------------
     // Utilitários públicos (usados também pelo script de migração)
     // ------------------------------------------------------------------

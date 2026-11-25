@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controle de Empenhos — Sistema de Gestão de Voluntários</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script>try { if (localStorage.getItem('sgv_tema') === 'dark') document.documentElement.dataset.theme = 'dark'; } catch (e) {}</script>
+</head>
+<body data-titulo="Controle de Empenhos">
+  <main class="page-content">
+    <div class="page-header">
+      <div>
+        <h1>Controle de Empenhos</h1>
+        <p class="page-header__subtitulo">Empenhos, pagamentos mensais e anulações dos voluntários, por lotação</p>
+      </div>
+      <div class="page-header__acoes" id="acoes-painel">
+        <a class="btn btn--outline" id="btn-exportar-xlsx" href="#"><span data-icon="download"></span> Exportar Excel</a>
+        <a class="btn btn--outline" id="btn-exportar-csv" href="#"><span data-icon="download"></span> CSV</a>
+      </div>
+    </div>
+
+    <div class="chips emp-abas" role="tablist" aria-label="Seções do controle de empenhos">
+      <button type="button" class="chip chip--ativo" role="tab" aria-selected="true" data-aba="painel"><span data-icon="grid"></span> Painel anual</button>
+      <button type="button" class="chip" role="tab" aria-selected="false" data-aba="lote"><span data-icon="calendar"></span> Lançamento mensal</button>
+      <button type="button" class="chip" role="tab" aria-selected="false" data-aba="lista"><span data-icon="file"></span> Lista da planilha</button>
+    </div>
+
+    <!-- ============ Painel anual ============ -->
+    <section id="aba-painel" role="tabpanel">
+      <div class="filtros-barra">
+        <div class="filtro-grupo">
+          <label for="filtro-ano">Ano</label>
+          <select id="filtro-ano"></select>
+        </div>
+        <div class="filtro-grupo">
+          <label for="filtro-lotacao">Lotação</label>
+          <select id="filtro-lotacao"><option value="">Todas as lotações</option></select>
+        </div>
+        <div class="busca-campo">
+          <span data-icon="search"></span>
+          <input type="search" id="filtro-busca" placeholder="Pesquisar voluntário ou nº de empenho...">
+        </div>
+        <label class="emp-check">
+          <input type="checkbox" id="filtro-pendencias">
+          <span>Só "saldo a anular"</span>
+        </label>
+      </div>
+
+      <div class="cards-grid" id="emp-cards"></div>
+      <div id="emp-grupos"></div>
+      <p class="legenda emp-legenda">
+        Clique no voluntário para ver o extrato, lançar pagamento ou anular saldo.
+        Valores em vermelho são anulações. <span class="badge badge--alerta">Saldo a anular</span> = voluntário não ativo ou com contrato encerrado que ainda tem saldo.
+      </p>
+    </section>
+
+    <!-- ============ Lançamento mensal em lote ============ -->
+    <section id="aba-lote" role="tabpanel" hidden>
+      <div class="filtros-barra">
+        <div class="filtro-grupo">
+          <label for="lote-mes">Competência</label>
+          <div class="emp-competencia">
+            <select id="lote-mes"></select>
+            <input type="number" id="lote-ano" min="2020" max="2100" aria-label="Ano">
+          </div>
+        </div>
+        <div class="filtro-grupo">
+          <label for="lote-lotacao">Lotação</label>
+          <select id="lote-lotacao"></select>
+        </div>
+        <button type="button" class="btn" id="btn-carregar-lote"><span data-icon="refresh"></span> Carregar voluntários</button>
+      </div>
+      <p class="legenda emp-legenda">
+        Aparecem os voluntários ativos com contrato no mês. Os dias vêm dos dias da semana do contrato (sem descontar feriados):
+        ajuste os dias ou o valor antes de confirmar. O pagamento sai primeiro do empenho mais antigo com saldo.
+      </p>
+      <div id="lote-conteudo"></div>
+      <div class="freq-barra emp-lote-barra" id="lote-barra" hidden>
+        <span id="lote-resumo"></span>
+        <button type="button" class="btn" id="btn-confirmar-lote"><span data-icon="checkCircle"></span> Confirmar lançamentos</button>
+      </div>
+    </section>
+
+    <!-- ============ Lista da planilha (js/lista-empenhos.js) ============ -->
+    <section id="aba-lista" role="tabpanel" hidden>
+      <div class="filtros-barra">
+        <div class="busca-campo">
+          <span data-icon="search"></span>
+          <input type="search" id="lemp-busca" placeholder="Pesquisar por nome...">
+        </div>
+        <div class="filtro-grupo">
+          <label for="lemp-lotacao">Lotação</label>
+          <select id="lemp-lotacao"><option value="">Todas as lotações</option></select>
+        </div>
+        <div class="filtro-grupo">
+          <label for="lemp-situacao">Situação</label>
+          <select id="lemp-situacao">
+            <option value="">Todas</option>
+            <option value="Ativo">Ativo</option>
+            <option value="Anulado">Anulado</option>
+          </select>
+        </div>
+      </div>
+      <p class="lemp-nota">
+        Retrato da planilha de controle <b id="lemp-ano"></b>, importado por <code>scripts/importar_empenhos.php</code>.
+        Os totais acompanham os filtros.
+      </p>
+      <div class="cards-grid lemp-cards" id="lemp-cards"></div>
+      <div id="lemp-grupos"></div>
+    </section>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script src="js/extrato-empenhos.js"></script>
+  <script src="js/empenhos.js"></script>
+  <script src="js/lista-empenhos.js"></script>
+</body>
+</html>

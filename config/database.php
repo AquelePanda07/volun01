@@ -4,8 +4,8 @@
  *
  * Escolhe onde o sistema guarda os dados e como conectar ao MySQL.
  *
- *   driver = 'google_sheets'  -> planilha do Google (services/GoogleSheetsService.php) [padrão]
- *   driver = 'mysql'          -> MySQL/MariaDB do XAMPP (services/MySQLService.php)
+ *   driver = 'mysql'          -> MySQL/MariaDB do XAMPP (services/MySQLService.php) [padrão]
+ *   driver = 'google_sheets'  -> planilha do Google (services/GoogleSheetsService.php)
  *
  * Usuário e senha do MySQL NÃO ficam neste arquivo: são lidos de
  * config/credentials/mysql.json (fora do git, ver .gitignore), no formato
@@ -24,7 +24,7 @@ if (is_file($arquivoCredenciais)) {
 }
 
 return [
-    'driver' => getenv('DB_DRIVER') ?: 'google_sheets',
+    'driver' => getenv('DB_DRIVER') ?: 'mysql',
 
     'mysql' => [
         'host' => getenv('DB_HOST') ?: '127.0.0.1',
